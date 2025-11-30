@@ -1,0 +1,177 @@
+{
+  "siteId": "site-mia-01",
+  "building": {
+    "glbUri": "/geometry/sites/site-mia-01/building-shell.glb",
+    "transformWorld": {
+      "position": [0, 0, 0],
+      "rotationEuler": [0, 0, 0],
+      "scale": [1, 1, 1]
+    }
+  },
+  "rooms": [
+    {
+      "id": "room-DC-01",
+      "name": "Main Datacenter",
+      "transformInBuilding": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    },
+    {
+      "id": "room-DC-02",
+      "name": "Expansion Area",
+      "transformInBuilding": {
+        "position": [25, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    }
+  ],
+  "racks": [
+    {
+      "id": "rack-01",
+      "roomId": "room-DC-01",
+      "name": "Rack 01",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [2, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 8.0,
+      "currentPowerKw": 6.8
+    },
+    {
+      "id": "rack-02",
+      "roomId": "room-DC-01",
+      "name": "Rack 02",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [4, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 8.0,
+      "currentPowerKw": 7.2
+    },
+    {
+      "id": "rack-03",
+      "roomId": "room-DC-01",
+      "name": "Rack 03",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [6, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 8.0,
+      "currentPowerKw": 5.5
+    },
+    {
+      "id": "rack-04",
+      "roomId": "room-DC-02",
+      "name": "Rack 04",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [2, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 8.0,
+      "currentPowerKw": 2.2
+    },
+    {
+      "id": "rack-05",
+      "roomId": "room-DC-02",
+      "name": "Rack 05",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [4, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 8.0,
+      "currentPowerKw": 1.8
+    }
+  ],
+  "devices": [
+    {
+      "id": "dev-mia-001",
+      "logicalEquipmentId": "logical-mia-001",
+      "rackId": "rack-01",
+      "deviceTypeId": "server-2u",
+      "name": "Legacy Server 1",
+      "uStart": 10,
+      "uHeight": 2,
+      "status4D": "EXISTING_REMOVED",
+      "powerKw": 1.5
+    },
+    {
+      "id": "dev-mia-002",
+      "logicalEquipmentId": "logical-mia-002",
+      "rackId": "rack-01",
+      "deviceTypeId": "server-4u",
+      "name": "Legacy Server 2",
+      "uStart": 15,
+      "uHeight": 4,
+      "status4D": "EXISTING_REMOVED",
+      "powerKw": 2.8
+    },
+    {
+      "id": "dev-mia-003",
+      "logicalEquipmentId": "logical-mia-003",
+      "rackId": "rack-02",
+      "deviceTypeId": "server-2u",
+      "name": "File Server 1",
+      "uStart": 8,
+      "uHeight": 2,
+      "status4D": "EXISTING_RETAINED",
+      "powerKw": 1.2
+    },
+    {
+      "id": "dev-mia-004",
+      "logicalEquipmentId": "logical-mia-004",
+      "rackId": "rack-02",
+      "deviceTypeId": "storage-4u",
+      "name": "NAS Storage 1",
+      "uStart": 20,
+      "uHeight": 4,
+      "status4D": "EXISTING_RETAINED",
+      "powerKw": 1.8
+    },
+    {
+      "id": "dev-mia-005",
+      "logicalEquipmentId": "logical-mia-005",
+      "rackId": "rack-03",
+      "deviceTypeId": "switch-1u",
+      "name": "Legacy Switch",
+      "uStart": 40,
+      "uHeight": 1,
+      "status4D": "EXISTING_REMOVED",
+      "powerKw": 0.2
+    },
+    {
+      "id": "dev-mia-006",
+      "logicalEquipmentId": "logical-mia-006",
+      "rackId": "rack-04",
+      "deviceTypeId": "server-2u",
+      "name": "Modern Server 1",
+      "uStart": 12,
+      "uHeight": 2,
+      "status4D": "PROPOSED",
+      "powerKw": 2.2
+    },
+    {
+      "id": "dev-mia-007",
+      "logicalEquipmentId": "logical-mia-007",
+      "rackId": "rack-05",
+      "deviceTypeId": "server-2u",
+      "name": "Modern Server 2",
+      "uStart": 12,
+      "uHeight": 2,
+      "status4D": "PROPOSED",
+      "powerKw": 2.2
+    }
+  ]
+}

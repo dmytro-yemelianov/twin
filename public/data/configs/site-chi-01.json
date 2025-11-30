@@ -1,0 +1,153 @@
+{
+  "siteId": "site-chi-01",
+  "building": {
+    "glbUri": "/geometry/sites/site-chi-01/building-shell.glb",
+    "transformWorld": {
+      "position": [0, 0, 0],
+      "rotationEuler": [0, 0, 0],
+      "scale": [1, 1, 1]
+    }
+  },
+  "rooms": [
+    {
+      "id": "room-DC-01",
+      "name": "Datacenter Room 1",
+      "transformInBuilding": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    },
+    {
+      "id": "room-DC-02",
+      "name": "Datacenter Room 2",
+      "transformInBuilding": {
+        "position": [30, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    }
+  ],
+  "racks": [
+    {
+      "id": "rack-01",
+      "roomId": "room-DC-01",
+      "name": "Rack 01",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [2, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 10.0,
+      "currentPowerKw": 7.8
+    },
+    {
+      "id": "rack-02",
+      "roomId": "room-DC-01",
+      "name": "Rack 02",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [4, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 10.0,
+      "currentPowerKw": 8.5
+    },
+    {
+      "id": "rack-03",
+      "roomId": "room-DC-01",
+      "name": "Rack 03",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [6, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 10.0,
+      "currentPowerKw": 6.2
+    },
+    {
+      "id": "rack-04",
+      "roomId": "room-DC-02",
+      "name": "Rack 04",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [2, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 10.0,
+      "currentPowerKw": 4.2
+    }
+  ],
+  "devices": [
+    {
+      "id": "dev-chi-001",
+      "logicalEquipmentId": "logical-chi-001",
+      "rackId": "rack-01",
+      "deviceTypeId": "server-2u",
+      "name": "Web Server 1",
+      "uStart": 10,
+      "uHeight": 2,
+      "status4D": "EXISTING_RETAINED",
+      "powerKw": 1.2
+    },
+    {
+      "id": "dev-chi-002",
+      "logicalEquipmentId": "logical-chi-002",
+      "rackId": "rack-01",
+      "deviceTypeId": "server-4u",
+      "name": "Database Server 1",
+      "uStart": 15,
+      "uHeight": 4,
+      "status4D": "EXISTING_RETAINED",
+      "powerKw": 2.4
+    },
+    {
+      "id": "dev-chi-003",
+      "logicalEquipmentId": "logical-chi-003",
+      "rackId": "rack-02",
+      "deviceTypeId": "server-2u",
+      "name": "App Server 1",
+      "uStart": 8,
+      "uHeight": 2,
+      "status4D": "EXISTING_RETAINED",
+      "powerKw": 1.8
+    },
+    {
+      "id": "dev-chi-004",
+      "logicalEquipmentId": "logical-chi-004",
+      "rackId": "rack-02",
+      "deviceTypeId": "storage-4u",
+      "name": "Storage Array 1",
+      "uStart": 20,
+      "uHeight": 4,
+      "status4D": "EXISTING_RETAINED",
+      "powerKw": 2.2
+    },
+    {
+      "id": "dev-chi-005",
+      "logicalEquipmentId": "logical-chi-005",
+      "rackId": "rack-03",
+      "deviceTypeId": "switch-1u",
+      "name": "Network Switch 1",
+      "uStart": 40,
+      "uHeight": 1,
+      "status4D": "PROPOSED",
+      "powerKw": 0.3
+    },
+    {
+      "id": "dev-chi-006",
+      "logicalEquipmentId": "logical-chi-006",
+      "rackId": "rack-04",
+      "deviceTypeId": "server-2u",
+      "name": "Backup Server 1",
+      "uStart": 12,
+      "uHeight": 2,
+      "status4D": "FUTURE",
+      "powerKw": 1.4
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "deviceTypes": [
+    {
+      "id": "rack-42u",
+      "category": "RACK",
+      "modelRef": "/geometry/global/rack-42u.glb",
+      "uHeight": 42,
+      "description": "Standard 42U 19-inch rack cabinet"
+    },
+    {
+      "id": "server-1u",
+      "category": "SERVER",
+      "modelRef": "/geometry/global/server-1u.glb",
+      "uHeight": 1,
+      "description": "1U rackmount server (pizza box)"
+    },
+    {
+      "id": "server-2u",
+      "category": "SERVER",
+      "modelRef": "/geometry/global/server-2u.glb",
+      "uHeight": 2,
+      "description": "2U rackmount server"
+    },
+    {
+      "id": "server-4u",
+      "category": "SERVER",
+      "modelRef": "/geometry/global/server-4u.glb",
+      "uHeight": 4,
+      "description": "4U rackmount server"
+    },
+    {
+      "id": "gpu-server-4u",
+      "category": "GPU_SERVER",
+      "modelRef": "/geometry/global/gpu-server-4u.glb",
+      "uHeight": 4,
+      "description": "4U GPU server with 8x NVIDIA H100 GPUs"
+    },
+    {
+      "id": "gpu-server-8u",
+      "category": "GPU_SERVER",
+      "modelRef": "/geometry/global/gpu-server-8u.glb",
+      "uHeight": 8,
+      "description": "8U GPU server with 16x NVIDIA H100 GPUs"
+    },
+    {
+      "id": "blade-enclosure-10u",
+      "category": "BLADE",
+      "modelRef": "/geometry/global/blade-10u.glb",
+      "uHeight": 10,
+      "description": "10U blade server enclosure (16 blades)"
+    },
+    {
+      "id": "switch-1u",
+      "category": "SWITCH",
+      "modelRef": "/geometry/global/switch-1u.glb",
+      "uHeight": 1,
+      "description": "1U 48-port gigabit switch"
+    },
+    {
+      "id": "switch-2u",
+      "category": "SWITCH",
+      "modelRef": "/geometry/global/switch-2u.glb",
+      "uHeight": 2,
+      "description": "2U core router/switch with 100G uplinks"
+    },
+    {
+      "id": "storage-2u",
+      "category": "STORAGE",
+      "modelRef": "/geometry/global/storage-2u.glb",
+      "uHeight": 2,
+      "description": "2U NVMe storage array (24 drives)"
+    },
+    {
+      "id": "storage-4u",
+      "category": "STORAGE",
+      "modelRef": "/geometry/global/storage-4u.glb",
+      "uHeight": 4,
+      "description": "4U high-density storage array (60 drives)"
+    },
+    {
+      "id": "pdu-0u",
+      "category": "PDU",
+      "modelRef": "/geometry/global/pdu-vertical.glb",
+      "uHeight": 0,
+      "description": "Vertical PDU (mounted to rack frame)"
+    },
+    {
+      "id": "ups-6u",
+      "category": "UPS",
+      "modelRef": "/geometry/global/ups-6u.glb",
+      "uHeight": 6,
+      "description": "6U UPS battery backup module"
+    },
+    {
+      "id": "patch-panel-1u",
+      "category": "NETWORK",
+      "modelRef": "/geometry/global/patch-panel-1u.glb",
+      "uHeight": 1,
+      "description": "1U 48-port fiber patch panel"
+    }
+  ]
+}

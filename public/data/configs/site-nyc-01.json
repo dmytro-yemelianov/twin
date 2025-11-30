@@ -1,0 +1,267 @@
+{
+  "siteId": "site-nyc-01",
+  "building": {
+    "glbUri": "/geometry/sites/site-nyc-01/building-shell.glb",
+    "transformWorld": {
+      "position": [0, 0, 0],
+      "rotationEuler": [0, 0, 0],
+      "scale": [1, 1, 1]
+    }
+  },
+  "rooms": [
+    {
+      "id": "room-DC-01",
+      "name": "Primary Data Hall",
+      "transformInBuilding": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    },
+    {
+      "id": "room-DC-02",
+      "name": "AI/ML Compute Hall",
+      "transformInBuilding": {
+        "position": [30, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    }
+  ],
+  "racks": [
+    {
+      "id": "rack-01",
+      "roomId": "room-DC-01",
+      "name": "Rack 01",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [2, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 12.0,
+      "currentPowerKw": 8.4
+    },
+    {
+      "id": "rack-02",
+      "roomId": "room-DC-01",
+      "name": "Rack 02",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [4, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 12.0,
+      "currentPowerKw": 3.2
+    },
+    {
+      "id": "rack-03",
+      "roomId": "room-DC-01",
+      "name": "Rack 03",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [6, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 12.0,
+      "currentPowerKw": 2.6
+    },
+    {
+      "id": "rack-04",
+      "roomId": "room-DC-01",
+      "name": "Rack 04",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [8, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 12.0,
+      "currentPowerKw": 4.8
+    },
+    {
+      "id": "rack-05",
+      "roomId": "room-DC-02",
+      "name": "Rack 05 (AI Ready)",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [2, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 20.0,
+      "currentPowerKw": 6.2
+    },
+    {
+      "id": "rack-06",
+      "roomId": "room-DC-02",
+      "name": "Rack 06 (AI Ready)",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [4, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 20.0,
+      "currentPowerKw": 1.8
+    }
+  ],
+  "devices": [
+    {
+      "id": "dev-001",
+      "logicalEquipmentId": "logical-001",
+      "rackId": "rack-01",
+      "deviceTypeId": "server-2u",
+      "name": "Web Server 01",
+      "uStart": 10,
+      "uHeight": 2,
+      "status4D": "EXISTING_RETAINED",
+      "powerKw": 0.8
+    },
+    {
+      "id": "dev-002",
+      "logicalEquipmentId": "logical-002",
+      "rackId": "rack-01",
+      "deviceTypeId": "server-4u",
+      "name": "PostgreSQL Primary DB",
+      "uStart": 15,
+      "uHeight": 4,
+      "status4D": "EXISTING_RETAINED",
+      "powerKw": 1.6
+    },
+    {
+      "id": "dev-003",
+      "logicalEquipmentId": "logical-003",
+      "rackId": "rack-01",
+      "deviceTypeId": "switch-1u",
+      "name": "Legacy 1Gb Switch",
+      "uStart": 40,
+      "uHeight": 1,
+      "status4D": "EXISTING_REMOVED",
+      "powerKw": 0.2
+    },
+    {
+      "id": "dev-004",
+      "logicalEquipmentId": "logical-004",
+      "rackId": "rack-01",
+      "deviceTypeId": "storage-4u",
+      "name": "SAN Storage Array",
+      "uStart": 25,
+      "uHeight": 4,
+      "status4D": "EXISTING_RETAINED",
+      "powerKw": 2.2
+    },
+    {
+      "id": "dev-005",
+      "logicalEquipmentId": "logical-005",
+      "rackId": "rack-01",
+      "deviceTypeId": "pdu-0u",
+      "name": "PDU-A",
+      "uStart": 0,
+      "uHeight": 0,
+      "status4D": "EXISTING_RETAINED",
+      "powerKw": 0.1
+    },
+    {
+      "id": "dev-006",
+      "logicalEquipmentId": "logical-006",
+      "rackId": "rack-02",
+      "deviceTypeId": "gpu-server-4u",
+      "name": "AI Inference Node 01",
+      "uStart": 5,
+      "uHeight": 4,
+      "status4D": "PROPOSED",
+      "powerKw": 3.8
+    },
+    {
+      "id": "dev-007",
+      "logicalEquipmentId": "logical-007",
+      "rackId": "rack-02",
+      "deviceTypeId": "switch-2u",
+      "name": "100G Core Switch",
+      "uStart": 40,
+      "uHeight": 2,
+      "status4D": "PROPOSED",
+      "powerKw": 0.6
+    },
+    {
+      "id": "dev-008",
+      "logicalEquipmentId": "logical-008",
+      "rackId": "rack-03",
+      "deviceTypeId": "gpu-server-8u",
+      "name": "AI Training Cluster Node 01",
+      "uStart": 10,
+      "uHeight": 8,
+      "status4D": "PROPOSED",
+      "powerKw": 6.5
+    },
+    {
+      "id": "dev-009",
+      "logicalEquipmentId": "logical-009",
+      "rackId": "rack-03",
+      "deviceTypeId": "storage-2u",
+      "name": "NVMe Cache Array",
+      "uStart": 20,
+      "uHeight": 2,
+      "status4D": "FUTURE",
+      "powerKw": 1.2
+    },
+    {
+      "id": "dev-010",
+      "logicalEquipmentId": "logical-010",
+      "rackId": "rack-04",
+      "deviceTypeId": "blade-enclosure-10u",
+      "name": "Blade Chassis 01 (Current Location)",
+      "uStart": 8,
+      "uHeight": 10,
+      "status4D": "MODIFIED",
+      "powerKw": 4.8
+    },
+    {
+      "id": "dev-011",
+      "logicalEquipmentId": "logical-010",
+      "rackId": "rack-05",
+      "deviceTypeId": "blade-enclosure-10u",
+      "name": "Blade Chassis 01 (Future Location)",
+      "uStart": 12,
+      "uHeight": 10,
+      "status4D": "MODIFIED",
+      "powerKw": 4.8
+    },
+    {
+      "id": "dev-012",
+      "logicalEquipmentId": "logical-011",
+      "rackId": "rack-05",
+      "deviceTypeId": "ups-6u",
+      "name": "UPS Battery Module",
+      "uStart": 30,
+      "uHeight": 6,
+      "status4D": "EXISTING_RETAINED",
+      "powerKw": 0.3
+    },
+    {
+      "id": "dev-013",
+      "logicalEquipmentId": "logical-012",
+      "rackId": "rack-06",
+      "deviceTypeId": "gpu-server-4u",
+      "name": "AI Inference Node 02",
+      "uStart": 5,
+      "uHeight": 4,
+      "status4D": "PROPOSED",
+      "powerKw": 3.8
+    },
+    {
+      "id": "dev-014",
+      "logicalEquipmentId": "logical-013",
+      "rackId": "rack-06",
+      "deviceTypeId": "patch-panel-1u",
+      "name": "Fiber Patch Panel",
+      "uStart": 41,
+      "uHeight": 1,
+      "status4D": "EXISTING_RETAINED",
+      "powerKw": 0.0
+    }
+  ]
+}

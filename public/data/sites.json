@@ -1,0 +1,48 @@
+{
+  "sites": [
+    {
+      "id": "site-nyc-01",
+      "name": "NYC-01",
+      "region": "US-East",
+      "lat": 40.7128,
+      "lon": -74.006,
+      "rackCount": 18,
+      "aiReadyRacks": 6,
+      "status": "AI_READY",
+      "sceneConfigUri": "/data/configs/site-nyc-01.json"
+    },
+    {
+      "id": "site-sf-01",
+      "name": "SF-01",
+      "region": "US-West",
+      "lat": 37.7749,
+      "lon": -122.4194,
+      "rackCount": 24,
+      "aiReadyRacks": 8,
+      "status": "AI_READY",
+      "sceneConfigUri": "/data/configs/site-sf-01.json"
+    },
+    {
+      "id": "site-chi-01",
+      "name": "CHI-01",
+      "region": "US-Central",
+      "lat": 41.8781,
+      "lon": -87.6298,
+      "rackCount": 12,
+      "aiReadyRacks": 0,
+      "status": "IN_PROGRESS",
+      "sceneConfigUri": "/data/configs/site-chi-01.json"
+    },
+    {
+      "id": "site-mia-01",
+      "name": "MIA-01",
+      "region": "US-Southeast",
+      "lat": 25.7617,
+      "lon": -80.1918,
+      "rackCount": 16,
+      "aiReadyRacks": 2,
+      "status": "LEGACY",
+      "sceneConfigUri": "/data/configs/site-mia-01.json"
+    }
+  ]
+}
