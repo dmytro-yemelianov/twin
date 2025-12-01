@@ -34,7 +34,7 @@ export function SitePanel({ site, onOpenTwin }: SitePanelProps) {
     )
   }
 
-  const capacityPercent = Math.round((site.aiReadyRacks / site.rackCount) * 100)
+  const capacityPercent = site.rackCount > 0 ? Math.round((site.aiReadyRacks / site.rackCount) * 100) : 0
 
   return (
     <Card className="border-border/50">

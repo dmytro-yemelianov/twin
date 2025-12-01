@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { SceneConfig } from "@/lib/types"
 import { status4DColors, status4DLabels } from "@/lib/types"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -59,14 +59,14 @@ export function InventoryPanel({ sceneConfig, selectedDeviceId, onDeviceSelect, 
   }
 
   // Auto-scroll to selected device
-  useMemo(() => {
-    if (selectedDeviceId) {
-      const index = tableData.findIndex((row) => row.device.id === selectedDeviceId)
-      if (index !== -1) {
-        const page = Math.floor(index / ROWS_PER_PAGE)
-        setCurrentPage(page)
-      }
-    }
+  useEffect(() => {
+    if (!selectedDeviceId) return
+
+    const index = tableData.findIndex((row) => row.device.id === selectedDeviceId)
+    if (index === -1) return
+
+    const page = Math.floor(index / ROWS_PER_PAGE)
+    setCurrentPage(page)
   }, [selectedDeviceId, tableData])
 
   return (

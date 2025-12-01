@@ -19,6 +19,19 @@ import {
 } from "@/lib/three/scene-builder"
 import { status4DColors } from "@/lib/types"
 
+function disposeObject(object: THREE.Object3D) {
+  object.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.geometry.dispose()
+      if (Array.isArray(child.material)) {
+        child.material.forEach((mat) => mat.dispose())
+      } else {
+        child.material.dispose()
+      }
+    }
+  })
+}
+
 class SimpleOrbitControls {
   camera: THREE.Camera
   domElement: HTMLElement
@@ -133,6 +146,8 @@ interface ThreeSceneProps {
   showBuilding: boolean
   selectedDeviceId: string | null
   onDeviceSelect: (deviceId: string | null) => void
+  selectedRackId?: string | null
+  onRackSelect?: (rackId: string | null) => void
   highlightedRacks?: string[]
   xrayMode?: boolean
   onCameraView?: (view: string) => void
@@ -159,6 +174,8 @@ export function ThreeScene({
   triggerZoomIn,
   triggerZoomOut,
   triggerSetView,
+  selectedRackId = null,
+  onRackSelect,
 }: ThreeSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -168,7 +185,7 @@ export function ThreeScene({
   const sceneObjectsRef = useRef<SceneObjects | null>(null)
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster())
   const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2())
-  const selectedRackRef = useRef<string | null>(null)
+  const previousHighlightedRacksRef = useRef<string[]>([])
 
   // Initialize Three.js scene
   useEffect(() => {
@@ -246,7 +263,8 @@ export function ThreeScene({
     resizeObserver.observe(container)
 
     // Also listen to window resize as backup
-    window.addEventListener("resize", () => handleResize())
+    const handleWindowResize = () => handleResize()
+    window.addEventListener("resize", handleWindowResize)
 
     // Handle click
     const handleClick = (event: MouseEvent) => {
@@ -268,11 +286,11 @@ export function ThreeScene({
 
         if (object.userData.type === "device") {
           onDeviceSelect(object.name)
-          selectedRackRef.current = null
+          onRackSelect?.(null)
           return
         } else if (object.userData.type === "rack") {
           // Handle rack selection
-          selectedRackRef.current = object.name
+          onRackSelect?.(object.name)
           onDeviceSelect(null)
 
           // Focus camera on rack
@@ -287,20 +305,29 @@ export function ThreeScene({
       }
 
       onDeviceSelect(null)
-      selectedRackRef.current = null
+      onRackSelect?.(null)
     }
     container.addEventListener("click", handleClick)
 
     return () => {
       cancelAnimationFrame(animationId)
       resizeObserver.disconnect()
-      window.removeEventListener("resize", () => handleResize())
+      window.removeEventListener("resize", handleWindowResize)
       container.removeEventListener("click", handleClick)
       controls.dispose()
       renderer.dispose()
       container.removeChild(renderer.domElement)
+      if (sceneObjectsRef.current) {
+        if (sceneObjectsRef.current.building) {
+          disposeObject(sceneObjectsRef.current.building)
+        }
+        sceneObjectsRef.current.rooms.forEach((room) => {
+          disposeObject(room)
+        })
+        sceneObjectsRef.current = null
+      }
     }
-  }, [onDeviceSelect])
+  }, [onDeviceSelect, onRackSelect])
 
   // Build scene objects
   useEffect(() => {
@@ -308,16 +335,24 @@ export function ThreeScene({
 
     const scene = sceneRef.current
     const deviceTypeMap = new Map(deviceTypes.map((dt) => [dt.id, dt]))
+    let isCancelled = false
+
+    const previousObjects = sceneObjectsRef.current
+    if (previousObjects) {
+      if (previousObjects.building) {
+        scene.remove(previousObjects.building)
+        disposeObject(previousObjects.building)
+      }
+      previousObjects.rooms.forEach((room) => {
+        scene.remove(room)
+        disposeObject(room)
+      })
+      sceneObjectsRef.current = null
+      previousHighlightedRacksRef.current = []
+    }
 
     buildScene(sceneConfig, deviceTypeMap).then((objects) => {
-      // Clear previous scene objects (except lights, grid, etc.)
-      const objectsToRemove: THREE.Object3D[] = []
-      scene.children.forEach((child) => {
-        if (child.userData.sceneObject) {
-          objectsToRemove.push(child)
-        }
-      })
-      objectsToRemove.forEach((obj) => scene.remove(obj))
+      if (!sceneRef.current || isCancelled) return
 
       // Add building
       if (objects.building) {
@@ -333,6 +368,10 @@ export function ThreeScene({
 
       sceneObjectsRef.current = objects
     })
+
+    return () => {
+      isCancelled = true
+    }
   }, [sceneConfig, deviceTypes])
 
   // Update device visibility based on status filters
@@ -394,8 +433,16 @@ export function ThreeScene({
     if (!sceneObjectsRef.current) return
 
     const { racks } = sceneObjectsRef.current
-    const rackGroups: THREE.Group[] = []
+    const previouslyHighlighted = previousHighlightedRacksRef.current
 
+    previouslyHighlighted.forEach((rackId) => {
+      const rack = racks.get(rackId)
+      if (rack) {
+        highlightRacks([rack], false)
+      }
+    })
+
+    const rackGroups: THREE.Group[] = []
     highlightedRacks.forEach((rackId) => {
       const rack = racks.get(rackId)
       if (rack) {
@@ -403,15 +450,11 @@ export function ThreeScene({
       }
     })
 
-    // Clear all rack highlights first
-    racks.forEach((rack) => {
-      highlightRacks([rack], false)
-    })
-
-    // Highlight selected racks
     if (rackGroups.length > 0) {
       highlightRacks(rackGroups, true)
     }
+
+    previousHighlightedRacksRef.current = highlightedRacks
   }, [highlightedRacks])
 
   useEffect(() => {
@@ -424,19 +467,10 @@ export function ThreeScene({
 
     const { racks } = sceneObjectsRef.current
 
-    // Clear all rack highlights
-    racks.forEach((rack) => {
-      highlightRack(rack, false)
+    racks.forEach((rack, rackId) => {
+      highlightRack(rack, rackId === selectedRackId)
     })
-
-    // Highlight selected rack
-    if (selectedRackRef.current) {
-      const rack = racks.get(selectedRackRef.current)
-      if (rack) {
-        highlightRack(rack, true)
-      }
-    }
-  }, [selectedRackRef.current, sceneObjectsRef.current])
+  }, [selectedRackId])
 
   useEffect(() => {
     if (!cameraRef.current || !controlsRef.current || !sceneRef.current) return

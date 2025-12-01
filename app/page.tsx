@@ -48,7 +48,14 @@ export default function Home() {
     setShowDetailsDrawer(true)
   }
 
-  const handleNavigate = (view: "map" | "documents" | "models") => {
+  const handleNavigate = (view: "map" | "documents" | "models" | "twin") => {
+    if (view === "twin") {
+      if (!selectedSite) {
+        setShowSitesDrawer(true)
+      }
+      setShowDetailsDrawer(Boolean(selectedSite))
+    }
+
     setCurrentView(view)
   }
 
@@ -97,7 +104,12 @@ export default function Home() {
             {selectedSite && (
               <Sheet open={showDetailsDrawer} onOpenChange={setShowDetailsDrawer}>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2 hidden md:flex bg-transparent">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 bg-transparent max-w-[200px]"
+                    onClick={() => setShowDetailsDrawer(true)}
+                  >
                     <span className="text-sm truncate max-w-[200px]">{selectedSite.name}</span>
                   </Button>
                 </SheetTrigger>

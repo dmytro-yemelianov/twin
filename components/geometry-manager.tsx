@@ -7,6 +7,16 @@ import { Button } from "./ui/button"
 import { Card } from "./ui/card"
 import { saveGeometry, getGeometryFiles, deleteGeometry, formatFileSize, type GeometryFile } from "@/lib/file-handler"
 import { Upload, Trash2, Box, CheckCircle2, AlertCircle } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface GeometryManagerProps {
   siteId: string
@@ -20,6 +30,7 @@ export function GeometryManager({ siteId, onGeometrySelect, selectedGeometryId }
   )
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<GeometryFile | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,16 +68,17 @@ export function GeometryManager({ siteId, onGeometrySelect, selectedGeometryId }
     }
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this geometry file? This will reset to procedural building.")) {
-      deleteGeometry(id)
-      const updated = getGeometryFiles().filter((g) => !g.metadata?.siteId || g.metadata.siteId === siteId)
-      setGeometries(updated)
+  const handleDeleteConfirmed = () => {
+    if (!deleteTarget) return
+    deleteGeometry(deleteTarget.id)
+    const updated = getGeometryFiles().filter((g) => !g.metadata?.siteId || g.metadata.siteId === siteId)
+    setGeometries(updated)
 
-      if (selectedGeometryId === id) {
-        onGeometrySelect?.(null)
-      }
+    if (selectedGeometryId === deleteTarget.id) {
+      onGeometrySelect?.(null)
     }
+
+    setDeleteTarget(null)
   }
 
   const handleSelect = (geometry: GeometryFile) => {
@@ -131,7 +143,7 @@ export function GeometryManager({ siteId, onGeometrySelect, selectedGeometryId }
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation()
-                    handleDelete(geo.id)
+                    setDeleteTarget(geo)
                   }}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -156,6 +168,25 @@ export function GeometryManager({ siteId, onGeometrySelect, selectedGeometryId }
           <li>IFC/Revit - Coming soon (convert to GLB first)</li>
         </ul>
       </div>
+      </div>
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete geometry?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Removing <span className="font-medium">{deleteTarget?.name ?? "this geometry"}</span> will revert the site
+              to the procedural shell.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteConfirmed}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

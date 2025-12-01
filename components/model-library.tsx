@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "./ui/button"
 import { Card } from "./ui/card"
 import { Label } from "./ui/label"
@@ -11,6 +11,16 @@ import { loadDeviceTypes } from "@/lib/data-loader"
 import { Upload, Trash2, Cable as Cube, Edit2, Save, X, AlertCircle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import type { DeviceType } from "@/lib/types"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export function ModelLibrary() {
   const [models, setModels] = useState<ModelFile[]>(() => getModelFiles())
@@ -19,11 +29,32 @@ export function ModelLibrary() {
   const [error, setError] = useState<string | null>(null)
   const [editingModel, setEditingModel] = useState<ModelFile | null>(null)
   const [selectedDeviceType, setSelectedDeviceType] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ModelFile | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useState(() => {
-    loadDeviceTypes().then(setDeviceTypes)
-  })
+  useEffect(() => {
+    let isCancelled = false
+    const controller = new AbortController()
+
+    loadDeviceTypes(controller.signal)
+      .then((types) => {
+        if (isCancelled) return
+        setDeviceTypes(types)
+      })
+      .catch((error) => {
+        if (isCancelled) return
+        console.error("[v0] Failed to load device types:", error)
+      })
+
+    return () => {
+      isCancelled = true
+      controller.abort()
+    }
+  }, [])
+
+  const handleDeviceTypeSelect = (value: string) => {
+    setSelectedDeviceType(value === "unassigned" ? null : value)
+  }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -60,11 +91,11 @@ export function ModelLibrary() {
     }
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this equipment model?")) {
-      deleteModel(id)
-      setModels(getModelFiles())
-    }
+  const handleDeleteConfirmed = () => {
+    if (!deleteTarget) return
+    deleteModel(deleteTarget.id)
+    setModels(getModelFiles())
+    setDeleteTarget(null)
   }
 
   const handleEdit = (model: ModelFile) => {
@@ -75,16 +106,11 @@ export function ModelLibrary() {
   const handleSaveEdit = () => {
     if (!editingModel) return
 
-    // Update model in storage
-    deleteModel(editingModel.id)
     const updatedModel = { ...editingModel, deviceTypeId: selectedDeviceType || undefined }
-
-    // Re-save with updated device type
-    const allModels = getModelFiles()
-    allModels.push(updatedModel)
+    const allModels = getModelFiles().map((model) => (model.id === editingModel.id ? updatedModel : model))
     localStorage.setItem("dt_models", JSON.stringify(allModels))
 
-    setModels(getModelFiles())
+    setModels(allModels)
     setEditingModel(null)
     setSelectedDeviceType(null)
   }
@@ -97,7 +123,7 @@ export function ModelLibrary() {
   const getDeviceTypeName = (typeId?: string) => {
     if (!typeId) return "Unassigned"
     const deviceType = deviceTypes.find((dt) => dt.id === typeId)
-    return deviceType?.name || typeId
+    return deviceType?.name || deviceType?.description || typeId
   }
 
   const getCategoryColor = (typeId?: string) => {
@@ -107,14 +133,18 @@ export function ModelLibrary() {
 
     const category = deviceType.category
     switch (category) {
-      case "compute":
+      case "GPU_SERVER":
+      case "SERVER":
         return "text-blue-400"
-      case "storage":
+      case "STORAGE":
         return "text-amber-400"
-      case "network":
+      case "NETWORK":
         return "text-green-400"
-      case "power":
+      case "PDU":
+      case "UPS":
         return "text-red-400"
+      case "SWITCH":
+        return "text-emerald-400"
       default:
         return "text-gray-400"
     }
@@ -134,7 +164,7 @@ export function ModelLibrary() {
         <Label className="text-sm">Upload Equipment Model</Label>
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="flex-1">
-            <Select value={selectedDeviceType || "unassigned"} onValueChange={setSelectedDeviceType}>
+            <Select value={selectedDeviceType ?? "unassigned"} onValueChange={handleDeviceTypeSelect}>
               <SelectTrigger className="text-sm">
                 <SelectValue placeholder="Select device type (optional)" />
               </SelectTrigger>
@@ -142,7 +172,7 @@ export function ModelLibrary() {
                 <SelectItem value="unassigned">Unassigned</SelectItem>
                 {deviceTypes.map((dt) => (
                   <SelectItem key={dt.id} value={dt.id}>
-                    {dt.name} ({dt.category})
+                    {(dt.name || dt.description || dt.id) ?? dt.id} ({dt.category})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -189,7 +219,7 @@ export function ModelLibrary() {
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <div className="flex-1">
-                        <Select value={selectedDeviceType || "unassigned"} onValueChange={setSelectedDeviceType}>
+                        <Select value={selectedDeviceType ?? "unassigned"} onValueChange={handleDeviceTypeSelect}>
                           <SelectTrigger className="text-sm">
                             <SelectValue placeholder="Select device type" />
                           </SelectTrigger>
@@ -197,7 +227,7 @@ export function ModelLibrary() {
                             <SelectItem value="unassigned">Unassigned</SelectItem>
                             {deviceTypes.map((dt) => (
                               <SelectItem key={dt.id} value={dt.id}>
-                                {dt.name} ({dt.category})
+                                {(dt.name || dt.description || dt.id) ?? dt.id} ({dt.category})
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -232,7 +262,13 @@ export function ModelLibrary() {
                       <Button variant="ghost" size="sm" onClick={() => handleEdit(model)}>
                         <Edit2 className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(model.id)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setDeleteTarget(model)
+                        }}
+                      >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -253,6 +289,23 @@ export function ModelLibrary() {
           <li>Assign models to device types to use in 3D scene</li>
         </ul>
       </div>
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete equipment model?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes <span className="font-medium">{deleteTarget?.name ?? "this model"}</span> from the library.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteConfirmed}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

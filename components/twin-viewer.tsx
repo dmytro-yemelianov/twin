@@ -33,6 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Package, Sparkles, Settings2 } from "lucide-react"
 import type { GeometryFile } from "@/lib/file-handler"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { useToast } from "@/components/ui/use-toast"
 
 interface TwinViewerProps {
   site: Site
@@ -41,7 +42,8 @@ interface TwinViewerProps {
 export function TwinViewer({ site }: TwinViewerProps) {
   const [sceneConfig, setSceneConfig] = useState<SceneConfig | null>(null)
   const [deviceTypes, setDeviceTypes] = useState<DeviceType[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isSceneLoading, setIsSceneLoading] = useState(true)
+  const [deviceTypesLoading, setDeviceTypesLoading] = useState(true)
   const [currentPhase, setCurrentPhase] = useState<Phase>("AS_IS")
   const [statusVisibility, setStatusVisibility] = useState<Record<Status4D, boolean>>({
     EXISTING_RETAINED: true,
@@ -68,18 +70,56 @@ export function TwinViewer({ site }: TwinViewerProps) {
   const [zoomOutTrigger, setZoomOutTrigger] = useState(0)
   const [setViewTrigger, setSetViewTrigger] = useState<{ view: string; timestamp: number } | null>(null)
 
+  const { toast } = useToast()
+
   useEffect(() => {
-    Promise.all([loadSceneConfig(site.sceneConfigUri), loadDeviceTypes()])
-      .then(([config, types]) => {
+    let isCancelled = false
+    const controller = new AbortController()
+    setIsSceneLoading(true)
+
+    loadSceneConfig(site.sceneConfigUri, controller.signal)
+      .then((config) => {
+        if (isCancelled) return
         setSceneConfig(config)
-        setDeviceTypes(types)
-        setIsLoading(false)
       })
       .catch((error) => {
+        if (isCancelled) return
         console.error("[v0] Failed to load scene data:", error)
-        setIsLoading(false)
       })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsSceneLoading(false)
+        }
+      })
+
+    return () => {
+      isCancelled = true
+      controller.abort()
+    }
   }, [site])
+
+  useEffect(() => {
+    let isCancelled = false
+    const controller = new AbortController()
+    setDeviceTypesLoading(true)
+
+    loadDeviceTypes(controller.signal)
+      .then((types) => {
+        if (isCancelled) return
+        setDeviceTypes(types)
+        setDeviceTypesLoading(false)
+      })
+      .catch((error) => {
+        if (isCancelled) return
+        console.error("[v0] Failed to load device types:", error)
+        setDeviceTypesLoading(false)
+      })
+
+    return () => {
+      isCancelled = true
+      controller.abort()
+    }
+  }, [])
 
   // Compute visible statuses based on phase and checkboxes
   const visibleStatuses = new Set<Status4D>()
@@ -102,7 +142,10 @@ export function TwinViewer({ site }: TwinViewerProps) {
       setAiCapacitySuggestion(suggestion)
       setHighlightedRacks(suggestion.rackIds)
     } else {
-      alert("No suitable AI-ready capacity found in the current phase.")
+      toast({
+        title: "No AI-ready capacity found",
+        description: "Try a different phase or adjust the visible status filters.",
+      })
     }
   }
 
@@ -122,6 +165,8 @@ export function TwinViewer({ site }: TwinViewerProps) {
       devices: updatedDevices,
     })
   }
+
+  const isLoading = isSceneLoading || deviceTypesLoading
 
   if (isLoading) {
     return (
@@ -337,6 +382,8 @@ export function TwinViewer({ site }: TwinViewerProps) {
                 showBuilding={showBuilding}
                 selectedDeviceId={selectedDeviceId}
                 onDeviceSelect={setSelectedDeviceId}
+                selectedRackId={selectedRackId}
+                onRackSelect={setSelectedRackId}
                 highlightedRacks={highlightedRacks}
                 xrayMode={xrayMode}
                 customGeometry={customGeometry}

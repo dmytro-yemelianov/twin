@@ -14,6 +14,16 @@ import {
   type UploadedFile,
 } from "@/lib/file-handler"
 import { FileText, Upload, Trash2, Eye, Download, AlertCircle } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface DocumentManagerProps {
   siteId?: string
@@ -25,6 +35,7 @@ export function DocumentManager({ siteId, rackId }: DocumentManagerProps) {
   const [selectedDoc, setSelectedDoc] = useState<UploadedFile | null>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<UploadedFile | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const storageInfo = getStorageInfo()
@@ -66,14 +77,14 @@ export function DocumentManager({ siteId, rackId }: DocumentManagerProps) {
     }
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this document?")) {
-      deleteDocument(id)
-      setDocuments(getDocuments())
-      if (selectedDoc?.id === id) {
-        setSelectedDoc(null)
-      }
+  const confirmDelete = () => {
+    if (!deleteTarget) return
+    deleteDocument(deleteTarget.id)
+    setDocuments(getDocuments())
+    if (selectedDoc?.id === deleteTarget.id) {
+      setSelectedDoc(null)
     }
+    setDeleteTarget(null)
   }
 
   const handleView = (doc: UploadedFile) => {
@@ -174,10 +185,10 @@ export function DocumentManager({ siteId, rackId }: DocumentManagerProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDelete(doc.id)
-                      }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeleteTarget(doc)
+                        }}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -220,6 +231,25 @@ export function DocumentManager({ siteId, rackId }: DocumentManagerProps) {
           </Card>
         </div>
       )}
+      </div>
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action permanently removes{" "}
+              <span className="font-medium">{deleteTarget?.name ?? "this file"}</span> from local storage.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={confirmDelete}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

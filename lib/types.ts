@@ -35,6 +35,8 @@ export interface DeviceType {
   category: DeviceCategory
   modelRef: string
   uHeight: number
+  name?: string
+  description?: string
 }
 
 // Scene Config Types
