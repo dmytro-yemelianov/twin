@@ -1,9 +1,11 @@
+import { estimateStoredBytes, generateId, readJSON, requireClientStorage, writeJSON, StorageQuotaExceededError } from "./storage"
+
 export interface UploadedFile {
   id: string
   name: string
   type: string
   size: number
-  uploadedAt: Date
+  uploadedAt: string
   category: "drawing" | "document" | "geometry" | "model" | "other"
   data: string // base64 or blob URL
   metadata?: {
@@ -23,34 +25,132 @@ export interface ModelFile extends UploadedFile {
   deviceTypeId?: string
 }
 
-// Storage keys
 const STORAGE_KEYS = {
   DOCUMENTS: "dt_documents",
   GEOMETRY: "dt_geometry",
   MODELS: "dt_models",
+} as const
+
+const STORAGE_LIMIT_BYTES = 5 * 1024 * 1024
+const FILE_CATEGORIES = new Set<UploadedFile["category"]>(["drawing", "document", "geometry", "model", "other"])
+const GEOMETRY_FORMATS = new Set<GeometryFile["format"]>(["glb", "gltf", "obj"])
+
+type Metadata = NonNullable<UploadedFile["metadata"]>
+
+function sanitizeMetadata(metadata: unknown): Metadata | undefined {
+  if (!metadata || typeof metadata !== "object") {
+    return undefined
+  }
+
+  const raw = metadata as Record<string, unknown>
+  const sanitized: Metadata = {
+    siteId: typeof raw.siteId === "string" ? raw.siteId : undefined,
+    rackId: typeof raw.rackId === "string" ? raw.rackId : undefined,
+    associatedWith: typeof raw.associatedWith === "string" ? raw.associatedWith : undefined,
+  }
+
+  if (sanitized.siteId || sanitized.rackId || sanitized.associatedWith) {
+    return sanitized
+  }
+
+  return undefined
 }
 
-/**
- * Check available storage space
- */
-export function getStorageInfo(): { used: number; available: number; percentage: number } {
-  let used = 0
-  for (const key in localStorage) {
-    if (localStorage.hasOwnProperty(key)) {
-      used += localStorage[key].length + key.length
-    }
+function sanitizeUploadedFile(record: unknown): UploadedFile | null {
+  if (!record || typeof record !== "object") {
+    return null
   }
-  const available = 5 * 1024 * 1024 // 5MB typical limit
+
+  const raw = record as Record<string, any>
+
+  if (
+    typeof raw.id !== "string" ||
+    typeof raw.name !== "string" ||
+    typeof raw.category !== "string" ||
+    typeof raw.data !== "string"
+  ) {
+    return null
+  }
+
+  if (!FILE_CATEGORIES.has(raw.category)) {
+    return null
+  }
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    type: typeof raw.type === "string" ? raw.type : "application/octet-stream",
+    size: typeof raw.size === "number" ? raw.size : Number(raw.size) || 0,
+    uploadedAt: typeof raw.uploadedAt === "string" ? raw.uploadedAt : new Date().toISOString(),
+    category: raw.category,
+    data: raw.data,
+    metadata: sanitizeMetadata(raw.metadata),
+  }
+}
+
+function sanitizeGeometryFile(record: unknown): GeometryFile | null {
+  const base = sanitizeUploadedFile(record)
+  if (!base || base.category !== "geometry") {
+    return null
+  }
+
+  const raw = record as Record<string, any>
+  if (typeof raw.format !== "string" || !GEOMETRY_FORMATS.has(raw.format)) {
+    return null
+  }
+
+  return {
+    ...base,
+    category: "geometry",
+    format: raw.format,
+  }
+}
+
+function sanitizeModelFile(record: unknown): ModelFile | null {
+  const base = sanitizeUploadedFile(record)
+  if (!base || base.category !== "model") {
+    return null
+  }
+
+  const raw = record as Record<string, any>
+  return {
+    ...base,
+    category: "model",
+    deviceTypeId: typeof raw.deviceTypeId === "string" ? raw.deviceTypeId : undefined,
+  }
+}
+
+function readRecords<T>(key: string, sanitizer: (record: unknown) => T | null): T[] {
+  const records = readJSON<unknown[]>(key, [])
+  if (!Array.isArray(records)) {
+    return []
+  }
+
+  return records.map((record) => sanitizer(record)).filter((value): value is T => Boolean(value))
+}
+
+function persistRecords<T>(key: string, data: T[], quotaMessage: string) {
+  try {
+    writeJSON(key, data)
+  } catch (error) {
+    if (error instanceof StorageQuotaExceededError) {
+      throw new Error(quotaMessage)
+    }
+    throw error
+  }
+}
+
+export function getStorageInfo(): { used: number; available: number; percentage: number } {
+  const used = estimateStoredBytes()
+  const percentage = STORAGE_LIMIT_BYTES === 0 ? 0 : Math.min((used / STORAGE_LIMIT_BYTES) * 100, 100)
+
   return {
     used,
-    available,
-    percentage: (used / available) * 100,
+    available: STORAGE_LIMIT_BYTES,
+    percentage,
   }
 }
 
-/**
- * Convert file to base64
- */
 export async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -60,163 +160,145 @@ export async function fileToBase64(file: File): Promise<string> {
   })
 }
 
-/**
- * Save document file
- */
 export async function saveDocument(
   file: File,
   category: UploadedFile["category"],
   metadata?: UploadedFile["metadata"],
 ): Promise<UploadedFile> {
-  const data = await fileToBase64(file)
+  if (!FILE_CATEGORIES.has(category)) {
+    throw new Error(`Unsupported document category "${category}"`)
+  }
 
+  requireClientStorage()
+
+  const data = await fileToBase64(file)
   const uploadedFile: UploadedFile = {
-    id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: generateId("doc"),
     name: file.name,
-    type: file.type,
+    type: file.type || "application/octet-stream",
     size: file.size,
-    uploadedAt: new Date(),
+    uploadedAt: new Date().toISOString(),
     category,
     data,
     metadata,
   }
 
-  // Get existing files
-  const existing = getDocuments()
-  existing.push(uploadedFile)
-
-  // Save to localStorage
-  try {
-    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(existing))
-  } catch (e) {
-    throw new Error("Storage quota exceeded. Please delete some files.")
-  }
+  const updated = [...getDocuments(), uploadedFile]
+  persistRecords(STORAGE_KEYS.DOCUMENTS, updated, "Storage quota exceeded. Please delete some files.")
 
   return uploadedFile
 }
 
-/**
- * Get all documents
- */
 export function getDocuments(): UploadedFile[] {
-  const data = localStorage.getItem(STORAGE_KEYS.DOCUMENTS)
-  if (!data) return []
-  return JSON.parse(data)
+  return readRecords(STORAGE_KEYS.DOCUMENTS, sanitizeUploadedFile)
 }
 
-/**
- * Delete document
- */
 export function deleteDocument(id: string): void {
-  const existing = getDocuments()
-  const filtered = existing.filter((f) => f.id !== id)
-  localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(filtered))
+  const updated = getDocuments().filter((file) => file.id !== id)
+  persistRecords(STORAGE_KEYS.DOCUMENTS, updated, "Storage quota exceeded. Please delete some files.")
 }
 
-/**
- * Save geometry file
- */
 export async function saveGeometry(file: File, siteId?: string): Promise<GeometryFile> {
-  const data = await fileToBase64(file)
+  requireClientStorage()
 
-  const format = file.name.endsWith(".glb") ? "glb" : file.name.endsWith(".gltf") ? "gltf" : "obj"
+  const data = await fileToBase64(file)
+  const extension = file.name.toLowerCase().endsWith(".glb")
+    ? "glb"
+    : file.name.toLowerCase().endsWith(".gltf")
+      ? "gltf"
+      : "obj"
+
+  if (!GEOMETRY_FORMATS.has(extension as GeometryFile["format"])) {
+    throw new Error("Unsupported geometry format.")
+  }
 
   const geometryFile: GeometryFile = {
-    id: `geo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: generateId("geo"),
     name: file.name,
-    type: file.type,
+    type: file.type || "model/gltf-binary",
     size: file.size,
-    uploadedAt: new Date(),
+    uploadedAt: new Date().toISOString(),
     category: "geometry",
-    format,
+    format: extension as GeometryFile["format"],
     data,
-    metadata: { siteId },
+    metadata: siteId ? { siteId } : undefined,
   }
 
-  const existing = getGeometryFiles()
-  existing.push(geometryFile)
-
-  try {
-    localStorage.setItem(STORAGE_KEYS.GEOMETRY, JSON.stringify(existing))
-  } catch (e) {
-    throw new Error("Storage quota exceeded. Geometry files are large - consider deleting unused files.")
-  }
+  const updated = [...getGeometryFiles(), geometryFile]
+  persistRecords(
+    STORAGE_KEYS.GEOMETRY,
+    updated,
+    "Storage quota exceeded. Geometry files are large - delete unused files.",
+  )
 
   return geometryFile
 }
 
-/**
- * Get all geometry files
- */
 export function getGeometryFiles(): GeometryFile[] {
-  const data = localStorage.getItem(STORAGE_KEYS.GEOMETRY)
-  if (!data) return []
-  return JSON.parse(data)
+  return readRecords(STORAGE_KEYS.GEOMETRY, sanitizeGeometryFile)
 }
 
-/**
- * Delete geometry file
- */
 export function deleteGeometry(id: string): void {
-  const existing = getGeometryFiles()
-  const filtered = existing.filter((f) => f.id !== id)
-  localStorage.setItem(STORAGE_KEYS.GEOMETRY, JSON.stringify(filtered))
+  const updated = getGeometryFiles().filter((file) => file.id !== id)
+  persistRecords(
+    STORAGE_KEYS.GEOMETRY,
+    updated,
+    "Storage quota exceeded. Geometry files are large - delete unused files.",
+  )
 }
 
-/**
- * Save equipment model file
- */
 export async function saveModel(file: File, deviceTypeId?: string): Promise<ModelFile> {
+  requireClientStorage()
+
   const data = await fileToBase64(file)
 
   const modelFile: ModelFile = {
-    id: `model_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: generateId("model"),
     name: file.name,
-    type: file.type,
+    type: file.type || "model/gltf-binary",
     size: file.size,
-    uploadedAt: new Date(),
+    uploadedAt: new Date().toISOString(),
     category: "model",
     deviceTypeId,
     data,
   }
 
-  const existing = getModelFiles()
-  existing.push(modelFile)
-
-  try {
-    localStorage.setItem(STORAGE_KEYS.MODELS, JSON.stringify(existing))
-  } catch (e) {
-    throw new Error("Storage quota exceeded. Please delete some files.")
-  }
+  const updated = [...getModelFiles(), modelFile]
+  persistRecords(STORAGE_KEYS.MODELS, updated, "Storage quota exceeded. Please delete some files.")
 
   return modelFile
 }
 
-/**
- * Get all model files
- */
 export function getModelFiles(): ModelFile[] {
-  const data = localStorage.getItem(STORAGE_KEYS.MODELS)
-  if (!data) return []
-  return JSON.parse(data)
+  return readRecords(STORAGE_KEYS.MODELS, sanitizeModelFile)
 }
 
-/**
- * Delete model file
- */
+export function updateModelDeviceType(modelId: string, deviceTypeId?: string): ModelFile | null {
+  const models = getModelFiles()
+  const index = models.findIndex((model) => model.id === modelId)
+  if (index === -1) {
+    return null
+  }
+
+  const updatedModel: ModelFile = { ...models[index], deviceTypeId }
+  const updated = [...models]
+  updated[index] = updatedModel
+
+  persistRecords(STORAGE_KEYS.MODELS, updated, "Storage quota exceeded. Please delete some files.")
+
+  return updatedModel
+}
+
 export function deleteModel(id: string): void {
-  const existing = getModelFiles()
-  const filtered = existing.filter((f) => f.id !== id)
-  localStorage.setItem(STORAGE_KEYS.MODELS, JSON.stringify(filtered))
+  const updated = getModelFiles().filter((file) => file.id !== id)
+  persistRecords(STORAGE_KEYS.MODELS, updated, "Storage quota exceeded. Please delete some files.")
 }
 
-/**
- * Format file size for display
- */
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes"
+  if (!bytes) return "0 Bytes"
   const k = 1024
   const sizes = ["Bytes", "KB", "MB", "GB"]
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i]
+  const value = bytes / Math.pow(k, i)
+  return `${Math.round(value * 100) / 100} ${sizes[i]}`
 }

@@ -231,8 +231,6 @@ export function DocumentManager({ siteId, rackId }: DocumentManagerProps) {
           </Card>
         </div>
       )}
-      </div>
-
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

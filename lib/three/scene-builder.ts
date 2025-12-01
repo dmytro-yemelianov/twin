@@ -573,12 +573,13 @@ export function setCameraView(
       position.set(target.x + distance, target.y, target.z)
       camera.up.set(0, 1, 0) // Standard up direction
       break
-    case "isometric":
+    case "isometric": {
       // Isometric: 45° angle from all three axes
       const isoDistance = distance * 0.8
       position.set(target.x + isoDistance, target.y + isoDistance, target.z + isoDistance)
       camera.up.set(0, 1, 0)
       break
+    }
     case "perspective":
       // Default perspective view
       position.set(target.x + distance * 0.5, target.y + distance * 0.4, target.z + distance * 0.5)

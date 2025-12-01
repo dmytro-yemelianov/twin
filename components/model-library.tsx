@@ -6,7 +6,14 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "./ui/button"
 import { Card } from "./ui/card"
 import { Label } from "./ui/label"
-import { saveModel, getModelFiles, deleteModel, formatFileSize, type ModelFile } from "@/lib/file-handler"
+import {
+  saveModel,
+  getModelFiles,
+  deleteModel,
+  formatFileSize,
+  type ModelFile,
+  updateModelDeviceType,
+} from "@/lib/file-handler"
 import { loadDeviceTypes } from "@/lib/data-loader"
 import { Upload, Trash2, Cable as Cube, Edit2, Save, X, AlertCircle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
@@ -106,11 +113,10 @@ export function ModelLibrary() {
   const handleSaveEdit = () => {
     if (!editingModel) return
 
-    const updatedModel = { ...editingModel, deviceTypeId: selectedDeviceType || undefined }
-    const allModels = getModelFiles().map((model) => (model.id === editingModel.id ? updatedModel : model))
-    localStorage.setItem("dt_models", JSON.stringify(allModels))
-
-    setModels(allModels)
+    const updatedModel = updateModelDeviceType(editingModel.id, selectedDeviceType || undefined)
+    if (updatedModel) {
+      setModels(getModelFiles())
+    }
     setEditingModel(null)
     setSelectedDeviceType(null)
   }

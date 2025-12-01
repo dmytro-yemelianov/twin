@@ -9,13 +9,14 @@ This is a Next.js application implementing a Digital Twin demonstration for data
 ## Key Technologies
 
 - **Framework**: Next.js 16 with React 19
-- **Language**: TypeScript
+- **Language**: TypeScript (ES6 target, strict mode enabled)
 - **3D Rendering**: Three.js for 3D visualization
 - **UI Components**: Radix UI primitives with custom components
 - **Styling**: Tailwind CSS v4
 - **State Management**: React hooks and context
 - **Map**: Leaflet for geographic visualization
 - **Forms**: React Hook Form with Zod validation
+- **Package Manager**: pnpm
 
 ## Development Commands
 
@@ -32,9 +33,19 @@ pnpm build
 # Run production build locally
 pnpm start
 
-# Run linting
+# Run linting (ESLint with Next.js core-web-vitals)
 pnpm lint
+
+# TypeScript type checking (Note: build ignores TS errors per next.config.mjs)
+pnpm tsc --noEmit
 ```
+
+## Project Configuration
+
+- **Path Alias**: `@/*` maps to project root (configured in tsconfig.json)
+- **TypeScript**: Build errors are currently ignored (`ignoreBuildErrors: true` in next.config.mjs)
+- **ESLint**: Configured to allow `any` types and warn on unused vars with `_` prefix
+- **Images**: Unoptimized mode enabled for Next.js image handling
 
 ## Architecture Overview
 
@@ -57,7 +68,12 @@ The application implements a sophisticated phase visibility system:
 - **TO_BE**: Target state (existing + new equipment)
 - **FUTURE**: Long-term state (all equipment including future plans)
 
-Phase visibility is controlled by `phaseVisibilityMap` in `/lib/types.ts`.
+Phase visibility is controlled by `phaseVisibilityMap` in `/lib/types.ts`. Equipment status types:
+- `EXISTING_RETAINED`: Equipment that stays across phases
+- `EXISTING_REMOVED`: Equipment to be decommissioned
+- `PROPOSED`: New equipment for TO_BE phase
+- `FUTURE`: Equipment for FUTURE phase
+- `MODIFIED`: Equipment being modified
 
 ### Key Components
 - **MapView** (`/components/map-view.tsx`) - Global site visualization
@@ -96,9 +112,6 @@ Strong TypeScript types are defined in `/lib/types.ts`:
 - Scene config validation before rendering
 - U-position conflict detection for rack equipment
 
-## Testing Approach
+## Testing
 
-Currently, the project does not have automated tests configured. When implementing tests:
-- Use Jest for unit testing
-- React Testing Library for component testing
-- Focus on critical business logic (phase visibility, AI capacity calculations)
+No testing framework is currently configured. The project relies on TypeScript for type safety and ESLint for code quality.

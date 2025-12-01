@@ -168,8 +168,6 @@ export function GeometryManager({ siteId, onGeometrySelect, selectedGeometryId }
           <li>IFC/Revit - Coming soon (convert to GLB first)</li>
         </ul>
       </div>
-      </div>
-
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

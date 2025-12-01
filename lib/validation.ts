@@ -29,7 +29,6 @@ export function validateDevicePlacement(
     return result
   }
 
-  // Check U position range
   const maxU = targetRack.uHeight || 42
   if (targetUPosition < 1 || targetUPosition > maxU) {
     result.valid = false
@@ -37,41 +36,44 @@ export function validateDevicePlacement(
     return result
   }
 
-  // Check if device fits (considering height in U)
-  const deviceHeight = device.uHeight || 1
+  const deviceHeight = Math.max(1, device.uHeight || 1)
   if (targetUPosition + deviceHeight - 1 > maxU) {
     result.valid = false
     result.errors.push(`Device requires ${deviceHeight}U but would exceed rack height`)
     return result
   }
 
-  // Check for conflicts with existing devices in target rack
   const devicesInRack = allDevices.filter(
-    (d) =>
-      d.rackId === targetRackId &&
-      d.id !== device.id && // Exclude the device being moved
-      d.status !== "removed", // Ignore removed devices
+    (d) => d.rackId === targetRackId && d.id !== device.id && d.status4D !== "EXISTING_REMOVED",
   )
+  const newDeviceEnd = targetUPosition + deviceHeight - 1
 
   for (const existing of devicesInRack) {
-    const existingHeight = existing.uHeight || 1
-    const existingEnd = existing.uPosition + existingHeight - 1
-    const newEnd = targetUPosition + deviceHeight - 1
+    const existingStart = existing.uStart || 1
+    const existingHeight = Math.max(1, existing.uHeight || 1)
+    const existingEnd = existingStart + existingHeight - 1
 
-    // Check for overlap
-    if (
-      (targetUPosition >= existing.uPosition && targetUPosition <= existingEnd) ||
-      (newEnd >= existing.uPosition && newEnd <= existingEnd) ||
-      (targetUPosition <= existing.uPosition && newEnd >= existingEnd)
-    ) {
+    if (rangesOverlap(existingStart, existingEnd, targetUPosition, newDeviceEnd)) {
       result.valid = false
-      result.errors.push(`Conflict with ${existing.name} at U${existing.uPosition}-${existingEnd}`)
+      result.errors.push(`Conflict with ${existing.name} at U${existingStart}-${existingEnd}`)
     }
   }
 
-  // Warnings for power/cooling considerations
-  if (device.deviceTypeId?.includes("gpu") && targetRack.powerCapacity) {
-    result.warnings.push("GPU servers require high power - verify rack capacity")
+  // Warn when the move pushes the rack near or beyond its power limits
+  const baseRackLoad = targetRack.currentPowerKw - (device.rackId === targetRackId ? device.powerKw : 0)
+  const projectedRackLoad = baseRackLoad + device.powerKw
+  if (targetRack.powerKwLimit > 0) {
+    if (projectedRackLoad > targetRack.powerKwLimit) {
+      result.warnings.push("Projected move exceeds rack power capacity")
+    } else if (projectedRackLoad / targetRack.powerKwLimit > 0.9) {
+      result.warnings.push("Rack will operate within 10% of its power limit")
+    }
+  } else {
+    result.warnings.push("Rack power limit is not configured")
+  }
+
+  if (device.deviceTypeId && device.deviceTypeId.toLowerCase().includes("gpu")) {
+    result.warnings.push("GPU devices may require enhanced cooling and power redundancy")
   }
 
   return result
@@ -89,32 +91,30 @@ export function getAvailableUPositions(
   const rack = racks.find((r) => r.id === rackId)
   if (!rack) return []
 
+  const sanitizedHeight = Math.max(1, deviceHeight)
   const maxU = rack.uHeight || 42
   const available: number[] = []
 
-  const devicesInRack = allDevices.filter((d) => d.rackId === rackId && d.status !== "removed")
+  const ranges = allDevices
+    .filter((device) => device.rackId === rackId && device.status4D !== "EXISTING_REMOVED")
+    .map((device) => {
+      const start = device.uStart || 1
+      const height = Math.max(1, device.uHeight || 1)
+      return { start, end: start + height - 1 }
+    })
 
-  for (let u = 1; u <= maxU - deviceHeight + 1; u++) {
-    let isAvailable = true
-
-    for (const device of devicesInRack) {
-      const deviceEnd = device.uPosition + (device.uHeight || 1) - 1
-      const proposedEnd = u + deviceHeight - 1
-
-      if (
-        (u >= device.uPosition && u <= deviceEnd) ||
-        (proposedEnd >= device.uPosition && proposedEnd <= deviceEnd) ||
-        (u <= device.uPosition && proposedEnd >= deviceEnd)
-      ) {
-        isAvailable = false
-        break
-      }
-    }
-
-    if (isAvailable) {
+  for (let u = 1; u <= maxU - sanitizedHeight + 1; u += 1) {
+    const proposedEnd = u + sanitizedHeight - 1
+    const hasConflict = ranges.some((range) => rangesOverlap(range.start, range.end, u, proposedEnd))
+    if (!hasConflict) {
       available.push(u)
     }
   }
 
   return available
 }
+
+function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
+  return aStart <= bEnd && bStart <= aEnd
+}
+

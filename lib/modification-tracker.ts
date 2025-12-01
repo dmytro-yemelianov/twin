@@ -1,8 +1,9 @@
+import { generateId, readJSON, removeKey, writeJSON } from "./storage"
 import type { Status4D } from "./types"
 
 export interface EquipmentModification {
   id: string
-  timestamp: Date
+  timestamp: string
   type: "move" | "add" | "remove" | "edit"
   deviceId: string
   deviceName: string
@@ -23,43 +24,86 @@ export interface EquipmentModification {
 
 const STORAGE_KEY = "dt_modifications"
 
-/**
- * Get all modifications
- */
-export function getModifications(): EquipmentModification[] {
-  const data = localStorage.getItem(STORAGE_KEY)
-  if (!data) return []
-  return JSON.parse(data)
+function sanitizeModification(record: unknown): EquipmentModification | null {
+  if (!record || typeof record !== "object") {
+    return null
+  }
+
+  const raw = record as Record<string, any>
+  if (
+    typeof raw.id !== "string" ||
+    typeof raw.timestamp !== "string" ||
+    typeof raw.type !== "string" ||
+    typeof raw.deviceId !== "string" ||
+    typeof raw.deviceName !== "string"
+  ) {
+    return null
+  }
+
+  if (!["move", "add", "remove", "edit"].includes(raw.type)) {
+    return null
+  }
+
+  const sanitizePosition = (value: any) => {
+    if (!value || typeof value !== "object") return undefined
+    const rackId = typeof value.rackId === "string" ? value.rackId : undefined
+    const uPosition = typeof value.uPosition === "number" ? value.uPosition : Number(value.uPosition)
+    if (!rackId || Number.isNaN(uPosition)) return undefined
+    return { rackId, uPosition }
+  }
+
+  const statusChange =
+    raw.statusChange &&
+    typeof raw.statusChange === "object" &&
+    typeof raw.statusChange.from === "string" &&
+    typeof raw.statusChange.to === "string"
+      ? {
+          from: raw.statusChange.from as Status4D,
+          to: raw.statusChange.to as Status4D,
+        }
+      : undefined
+
+  return {
+    id: raw.id,
+    timestamp: raw.timestamp,
+    type: raw.type,
+    deviceId: raw.deviceId,
+    deviceName: raw.deviceName,
+    from: sanitizePosition(raw.from),
+    to: sanitizePosition(raw.to),
+    statusChange,
+    notes: typeof raw.notes === "string" ? raw.notes : undefined,
+  }
 }
 
-/**
- * Add a new modification
- */
+function readModifications(): EquipmentModification[] {
+  const data = readJSON<unknown[]>(STORAGE_KEY, [])
+  if (!Array.isArray(data)) return []
+  return data.map((entry) => sanitizeModification(entry)).filter((entry): entry is EquipmentModification => Boolean(entry))
+}
+
+export function getModifications(): EquipmentModification[] {
+  return readModifications()
+}
+
 export function addModification(mod: Omit<EquipmentModification, "id" | "timestamp">): EquipmentModification {
-  const modification: EquipmentModification = {
+  const newModification: EquipmentModification = {
     ...mod,
-    id: `mod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    timestamp: new Date(),
+    id: generateId("mod"),
+    timestamp: new Date().toISOString(),
   }
 
   const existing = getModifications()
-  existing.push(modification)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(existing))
+  const updated = [...existing, newModification]
+  writeJSON(STORAGE_KEY, updated)
 
-  return modification
+  return newModification
 }
 
-/**
- * Clear all modifications (for demo reset)
- */
 export function clearModifications(): void {
-  localStorage.removeItem(STORAGE_KEY)
+  removeKey(STORAGE_KEY)
 }
 
-/**
- * Get modifications for a specific device
- */
 export function getDeviceModifications(deviceId: string): EquipmentModification[] {
-  const all = getModifications()
-  return all.filter((m) => m.deviceId === deviceId)
+  return getModifications().filter((modification) => modification.deviceId === deviceId)
 }

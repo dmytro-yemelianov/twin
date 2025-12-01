@@ -33,6 +33,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Package, Sparkles, Settings2 } from "lucide-react"
 import type { GeometryFile } from "@/lib/file-handler"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Card } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/components/ui/use-toast"
 
 interface TwinViewerProps {
@@ -59,9 +62,9 @@ export function TwinViewer({ site }: TwinViewerProps) {
   const [aiCapacitySuggestion, setAiCapacitySuggestion] = useState<AICapacitySuggestion | null>(null)
   const [highlightedRacks, setHighlightedRacks] = useState<string[]>([])
   const [xrayMode, setXrayMode] = useState(false)
-  const [showControlsDrawer, setShowControlsDrawer] = useState(false)
   const [showDemoDrawer, setShowDemoDrawer] = useState(false)
   const [customGeometry, setCustomGeometry] = useState<GeometryFile | null>(null)
+  const [showGeometryDialog, setShowGeometryDialog] = useState(false)
   const [selectedRackId, setSelectedRackId] = useState<string | null>(null)
   const [currentCameraView, setCurrentCameraView] = useState("perspective")
   const [resetCameraTrigger, setResetCameraTrigger] = useState(0)
@@ -192,20 +195,127 @@ export function TwinViewer({ site }: TwinViewerProps) {
 
   return (
     <div className="flex flex-col h-full w-full overflow-hidden relative">
-      <div className="absolute top-4 left-4 z-10 flex gap-2">
-        <Button variant="default" size="sm" onClick={() => setShowControlsDrawer(true)} className="shadow-lg">
-          <Settings2 className="w-4 h-4 mr-2" />
-          Controls
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowDemoDrawer(true)}
-          className="shadow-lg bg-background/95 backdrop-blur"
-        >
-          <Menu className="w-4 h-4 mr-2" />
-          Demo Scenario
-        </Button>
+      <div className="absolute top-4 left-4 z-20 flex flex-col gap-3 w-[280px]">
+        <Card className="bg-card/95 backdrop-blur border-border/60 shadow-xl p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <Settings2 className="w-4 h-4" />
+              Controls
+            </div>
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setShowDemoDrawer(true)}>
+              <Menu className="w-3 h-3 mr-1" />
+              Demo
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Phase</Label>
+            <Select value={currentPhase} onValueChange={(v) => setCurrentPhase(v as Phase)}>
+              <SelectTrigger className="text-sm h-8">
+                <SelectValue placeholder="Select phase" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AS_IS">Phase 1: As-Is</SelectItem>
+                <SelectItem value="TO_BE">Phase 2: To-Be</SelectItem>
+                <SelectItem value="FUTURE">Phase 3: Future</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2 max-h-48 overflow-auto pr-1">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">4D Status Layers</Label>
+            <div className="space-y-2">
+              {(Object.keys(status4DLabels) as Status4D[]).map((status) => {
+                const isAllowedByPhase = allowedByPhase.includes(status)
+                return (
+                  <div key={status} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`status-${status}`}
+                      checked={statusVisibility[status]}
+                      onCheckedChange={(checked) => handleStatusToggle(status, checked as boolean)}
+                      disabled={!isAllowedByPhase}
+                    />
+                    <Label htmlFor={`status-${status}`} className={`text-sm ${!isAllowedByPhase ? "opacity-50" : ""}`}>
+                      {status4DLabels[status]}
+                    </Label>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Color Mode</Label>
+            <Select value={colorMode} onValueChange={(v) => setColorMode(v as ColorMode)}>
+              <SelectTrigger className="text-sm h-8">
+                <SelectValue placeholder="Select mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="4D_STATUS">4D Status</SelectItem>
+                <SelectItem value="CUSTOMER" disabled>
+                  Customer (Soon)
+                </SelectItem>
+                <SelectItem value="POWER" disabled>
+                  Power (Soon)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="showBuilding"
+                checked={showBuilding}
+                onCheckedChange={(checked) => setShowBuilding(checked as boolean)}
+              />
+              <Label htmlFor="showBuilding" className="text-sm">
+                Building Shell
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox id="xrayMode" checked={xrayMode} onCheckedChange={(checked) => setXrayMode(checked as boolean)} />
+              <Label htmlFor="xrayMode" className="text-sm flex items-center gap-1">
+                {xrayMode ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                X-Ray Mode
+              </Label>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-2">
+            <Button
+              variant={showInventory ? "default" : "outline"}
+              size="sm"
+              className="w-full justify-between"
+              onClick={() => setShowInventory(!showInventory)}
+            >
+              <span className="flex items-center gap-2 text-sm">
+                <Package className="w-4 h-4" />
+                Inventory
+              </span>
+              <span className="text-xs uppercase tracking-wide">{showInventory ? "Hide" : "Show"}</span>
+            </Button>
+            <Button variant="default" size="sm" className="w-full bg-green-600 hover:bg-green-700" onClick={handleFindAICapacity}>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Find AI Capacity
+            </Button>
+            <Button variant="outline" size="sm" className="w-full justify-between" onClick={() => setShowGeometryDialog(true)}>
+              <span className="flex items-center gap-2 text-sm">
+                <Package className="w-4 h-4" />
+                Custom Geometry
+              </span>
+              <span className="text-xs uppercase tracking-wide">{customGeometry ? "Loaded" : "Default"}</span>
+            </Button>
+          </div>
+        </Card>
       </div>
 
       {aiCapacitySuggestion && (
@@ -213,122 +323,6 @@ export function TwinViewer({ site }: TwinViewerProps) {
           <AICapacityPanel suggestion={aiCapacitySuggestion} onClose={handleCloseAICapacity} />
         </div>
       )}
-
-      <Sheet open={showControlsDrawer} onOpenChange={setShowControlsDrawer}>
-        <SheetContent side="left" className="w-full sm:w-96 overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>3D Visualization Controls</SheetTitle>
-          </SheetHeader>
-
-          <div className="space-y-6 mt-6">
-            <div className="space-y-3">
-              <Label className="text-sm">Phase (4D Timeline)</Label>
-              <Select value={currentPhase} onValueChange={(v) => setCurrentPhase(v as Phase)}>
-                <SelectTrigger className="text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="AS_IS">Phase 1: As-Is</SelectItem>
-                  <SelectItem value="TO_BE">Phase 2: To-Be</SelectItem>
-                  <SelectItem value="FUTURE">Phase 3: Future</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-sm">4D Status Layers</Label>
-              <div className="space-y-2">
-                {(Object.keys(status4DLabels) as Status4D[]).map((status) => {
-                  const isAllowedByPhase = allowedByPhase.includes(status)
-                  return (
-                    <div key={status} className="flex items-center gap-2">
-                      <Checkbox
-                        id={status}
-                        checked={statusVisibility[status]}
-                        onCheckedChange={(checked) => handleStatusToggle(status, checked as boolean)}
-                        disabled={!isAllowedByPhase}
-                      />
-                      <Label htmlFor={status} className={`text-sm ${!isAllowedByPhase ? "opacity-50" : ""}`}>
-                        {status4DLabels[status]}
-                      </Label>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-sm">Color Mode</Label>
-              <Select value={colorMode} onValueChange={(v) => setColorMode(v as ColorMode)}>
-                <SelectTrigger className="text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="4D_STATUS">4D Status</SelectItem>
-                  <SelectItem value="CUSTOMER">Customer (Soon)</SelectItem>
-                  <SelectItem value="POWER">Power (Soon)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="showBuilding"
-                  checked={showBuilding}
-                  onCheckedChange={(checked) => setShowBuilding(checked as boolean)}
-                />
-                <Label htmlFor="showBuilding" className="text-sm">
-                  Building Shell
-                </Label>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="xrayMode"
-                  checked={xrayMode}
-                  onCheckedChange={(checked) => setXrayMode(checked as boolean)}
-                />
-                <Label htmlFor="xrayMode" className="text-sm flex items-center gap-1">
-                  {xrayMode ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  X-Ray Mode
-                </Label>
-              </div>
-            </div>
-
-            <div className="border-t border-border/50 pt-4 space-y-2">
-              <Button
-                variant={showInventory ? "secondary" : "outline"}
-                size="sm"
-                className="w-full text-sm"
-                onClick={() => setShowInventory(!showInventory)}
-              >
-                <Package className="w-4 h-4 mr-2" />
-                {showInventory ? "Hide" : "Show"} Inventory
-              </Button>
-
-              <Button
-                variant="default"
-                size="sm"
-                className="w-full bg-green-600 hover:bg-green-700 text-sm"
-                onClick={handleFindAICapacity}
-              >
-                <Sparkles className="w-4 h-4 mr-2" />
-                Find AI Capacity
-              </Button>
-            </div>
-
-            <div className="border-t border-border/50 pt-4">
-              <GeometryManager
-                siteId={site.id}
-                onGeometrySelect={setCustomGeometry}
-                selectedGeometryId={customGeometry?.id}
-              />
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-
       <Sheet open={showDemoDrawer} onOpenChange={setShowDemoDrawer}>
         <SheetContent side="right" className="w-full sm:w-[500px]">
           <SheetHeader>
@@ -339,6 +333,15 @@ export function TwinViewer({ site }: TwinViewerProps) {
           </div>
         </SheetContent>
       </Sheet>
+
+      <Dialog open={showGeometryDialog} onOpenChange={setShowGeometryDialog}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Custom Building Geometry</DialogTitle>
+          </DialogHeader>
+          <GeometryManager siteId={site.id} onGeometrySelect={setCustomGeometry} selectedGeometryId={customGeometry?.id} />
+        </DialogContent>
+      </Dialog>
 
       <div className="flex-1 min-h-0 w-full">
         <Tabs defaultValue="scene" className="h-full flex flex-col">

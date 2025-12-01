@@ -3,11 +3,8 @@ import { phaseVisibilityMap } from "./types"
 
 export function findAIReadyCapacity(sceneConfig: SceneConfig, currentPhase: Phase): AICapacitySuggestion | null {
   const { racks, devices } = sceneConfig
+  const allowedStatuses = new Set(phaseVisibilityMap[currentPhase])
 
-  // Get allowed statuses for current phase
-  const allowedStatuses = phaseVisibilityMap[currentPhase]
-
-  // Group racks by room
   const racksByRoom: Record<string, Rack[]> = {}
   racks.forEach((rack) => {
     if (!racksByRoom[rack.roomId]) {
@@ -15,56 +12,68 @@ export function findAIReadyCapacity(sceneConfig: SceneConfig, currentPhase: Phas
     }
     racksByRoom[rack.roomId].push(rack)
   })
+  Object.values(racksByRoom).forEach((roomRacks) => roomRacks.sort((a, b) => a.name.localeCompare(b.name)))
 
-  // Sort racks within each room by name
-  Object.values(racksByRoom).forEach((roomRacks) => {
-    roomRacks.sort((a, b) => a.name.localeCompare(b.name))
+  const devicesByRack = devices.reduce<Record<string, typeof devices>>((acc, device) => {
+    if (!allowedStatuses.has(device.status4D)) {
+      return acc
+    }
+    if (!acc[device.rackId]) {
+      acc[device.rackId] = []
+    }
+    acc[device.rackId].push(device)
+    return acc
+  }, {})
+
+  const rackMetrics = new Map<
+    string,
+    {
+      freeU: number
+      powerHeadroom: number
+    }
+  >()
+
+  racks.forEach((rack) => {
+    const rackDevices = devicesByRack[rack.id] ?? []
+    const usedU = rackDevices.reduce((sum, d) => sum + d.uHeight, 0)
+    rackMetrics.set(rack.id, {
+      freeU: Math.max(0, rack.uHeight - usedU),
+      powerHeadroom: Math.max(0, rack.powerKwLimit - rack.currentPowerKw),
+    })
   })
 
   let bestBlock: AICapacitySuggestion | null = null
   let bestScore = -1
 
-  // Try each room
   for (const roomRacks of Object.values(racksByRoom)) {
-    // Try blocks of 3 to 6 contiguous racks
     for (let blockSize = 3; blockSize <= Math.min(6, roomRacks.length); blockSize++) {
       for (let start = 0; start <= roomRacks.length - blockSize; start++) {
         const blockRacks = roomRacks.slice(start, start + blockSize)
-        const blockRackIds = blockRacks.map((r) => r.id)
 
-        let totalFreeU = 0
-        let totalPowerHeadroomKw = 0
+        const totals = blockRacks.reduce(
+          (acc, rack) => {
+            const metrics = rackMetrics.get(rack.id)
+            if (!metrics) return acc
+            acc.freeU += metrics.freeU
+            acc.power += metrics.powerHeadroom
+            return acc
+          },
+          { freeU: 0, power: 0 },
+        )
 
-        // Calculate metrics for each rack in the block
-        blockRacks.forEach((rack) => {
-          // Calculate used U in this rack (only for visible devices)
-          const rackDevices = devices.filter((d) => d.rackId === rack.id && allowedStatuses.includes(d.status4D))
-          const usedU = rackDevices.reduce((sum, d) => sum + d.uHeight, 0)
-          const freeU = rack.uHeight - usedU
-
-          // Calculate power headroom
-          const powerHeadroomKw = rack.powerKwLimit - rack.currentPowerKw
-
-          totalFreeU += freeU
-          totalPowerHeadroomKw += powerHeadroomKw
-        })
-
-        // Score: prioritize free U space and adequate power headroom
-        // Only consider blocks with at least 20% power headroom
-        const avgPowerHeadroom = totalPowerHeadroomKw / blockSize
-        if (avgPowerHeadroom < 2.0) {
-          continue // Skip blocks with insufficient power headroom
+        const avgPowerHeadroom = totals.power / blockSize
+        if (avgPowerHeadroom < 2) {
+          continue
         }
 
-        const score = totalFreeU + totalPowerHeadroomKw * 5 // Weight power more heavily
-
+        const score = totals.freeU + totals.power * 5
         if (score > bestScore) {
           bestScore = score
           bestBlock = {
-            rackIds: blockRackIds,
-            totalFreeU,
-            totalPowerHeadroomKw,
-            summary: `${blockSize} racks can host ${totalFreeU}U of AI servers with ${totalPowerHeadroomKw.toFixed(1)}kW power headroom available.`,
+            rackIds: blockRacks.map((rack) => rack.id),
+            totalFreeU: totals.freeU,
+            totalPowerHeadroomKw: totals.power,
+            summary: `${blockSize} racks can host ${totals.freeU}U of AI servers with ${totals.power.toFixed(1)}kW power headroom available.`,
           }
         }
       }
