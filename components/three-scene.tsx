@@ -354,9 +354,9 @@ export function ThreeScene({
     scene.add(compass)
     compassRef.current = compass
 
-    // Create ViewHelper (CAD-style view cube)
+    // Create ViewHelper (CAD-style view cube) - positioned in top-right corner
     const viewHelper = new ViewHelper(camera, renderer.domElement)
-    viewHelper.center.set(0.85, -0.85, 0) // Position in bottom-right corner (NDC: 1=right, -1=bottom)
+    viewHelper.center.set(0.85, 0.85, 0) // Position in top-right corner (NDC: 1=right, 1=top)
     viewHelperRef.current = viewHelper
     
     // Handle ViewHelper click events
@@ -366,20 +366,16 @@ export function ThreeScene({
       const viewHelperSize = 128 // ViewHelper default size
       const margin = 16
       
-      // Check if click is in the ViewHelper area (bottom-right corner)
+      // Check if click is in the ViewHelper area (top-right corner)
       const viewHelperX = rect.right - viewHelperSize - margin
-      const viewHelperY = rect.bottom - viewHelperSize - margin
+      const viewHelperY = rect.top + margin
       
       if (
         event.clientX >= viewHelperX &&
         event.clientX <= rect.right - margin &&
         event.clientY >= viewHelperY &&
-        event.clientY <= rect.bottom - margin
+        event.clientY <= viewHelperY + viewHelperSize
       ) {
-        // Convert click to ViewHelper space
-        const x = (event.clientX - viewHelperX) / viewHelperSize
-        const y = (event.clientY - viewHelperY) / viewHelperSize
-        
         // Let ViewHelper handle the click
         viewHelper.handleClick(event)
       }
