@@ -52,6 +52,11 @@ const InventoryPanelDynamic = dynamic(() => import("./inventory-panel").then(mod
   ssr: false
 })
 
+const HierarchyGraphDynamic = dynamic(() => import("./hierarchy-graph").then(mod => ({ default: mod.HierarchyGraph })), {
+  loading: () => <SceneSkeleton />,
+  ssr: false
+})
+
 // These components may not exist yet - we'll handle them conditionally
 // const TimelineView = dynamic(() => import("./timeline-view"), { ssr: false })
 // const MaintenanceGantt = dynamic(() => import("./maintenance-gantt"), { ssr: false })
@@ -692,6 +697,24 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
                 <p>Gantt Chart</p>
               </TooltipContent>
             </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setCurrentTab('graph')}
+                  className={`w-8 h-7 rounded-md transition-all flex items-center justify-center ${
+                    currentTab === 'graph'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  }`}
+                >
+                  <GitBranch className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Hierarchy Graph</p>
+                <p className="text-xs text-muted-foreground">View equipment hierarchy as node graph</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           {/* Display Options Group */}
@@ -904,6 +927,29 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
           {currentTab === 'gantt' && (
             <div className="h-full p-4 overflow-auto bg-background">
               <MaintenanceGantt />
+            </div>
+          )}
+
+          {currentTab === 'graph' && (
+            <div className="h-full">
+              <HierarchyGraphDynamic
+                sceneConfig={sceneConfig}
+                siteName={site.name}
+                selectedNodeId={selectedDeviceId || selectedRackId || selectedRoomId}
+                onNodeSelect={(nodeId, nodeType) => {
+                  if (nodeType === 'device') {
+                    selectDevice(nodeId)
+                  } else if (nodeType === 'rack') {
+                    selectRack(nodeId)
+                  } else if (nodeType === 'room') {
+                    selectRoom(nodeId)
+                  } else if (nodeType === 'floor') {
+                    selectFloor(nodeId)
+                  } else if (nodeType === 'building') {
+                    selectBuilding(nodeId)
+                  }
+                }}
+              />
             </div>
           )}
         </div>
