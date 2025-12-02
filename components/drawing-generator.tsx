@@ -121,18 +121,35 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
   const U_HEIGHT = 8 // pixels per U
   const RACK_WIDTH = 200
 
+  // Helper to get room position and calculate dimensions
+  const getRoomGeometry = useCallback((room: Room) => {
+    const position = room.transformInBuilding?.position || [0, 0, 0]
+    const area = room.area || 100
+    // Approximate dimensions from area (assume roughly square rooms)
+    const side = Math.sqrt(area)
+    return {
+      x: position[0],
+      y: position[1],
+      z: position[2],
+      width: side,
+      depth: side,
+      area
+    }
+  }, [])
+
   // Floor plan SVG
   const renderFloorPlan = useCallback(() => {
     const rooms = roomsInFloor
     if (rooms.length === 0) return null
 
-    // Calculate bounds
+    // Calculate bounds using transformed positions
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
     rooms.forEach(room => {
-      minX = Math.min(minX, room.position.x)
-      minY = Math.min(minY, room.position.z)
-      maxX = Math.max(maxX, room.position.x + room.dimensions.width)
-      maxY = Math.max(maxY, room.position.z + room.dimensions.depth)
+      const geo = getRoomGeometry(room)
+      minX = Math.min(minX, geo.x)
+      minY = Math.min(minY, geo.z)
+      maxX = Math.max(maxX, geo.x + geo.width)
+      maxY = Math.max(maxY, geo.z + geo.depth)
     })
 
     const width = (maxX - minX) * SCALE + PADDING * 2
@@ -179,10 +196,11 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
 
         {/* Rooms */}
         {rooms.map(room => {
-          const x = (room.position.x - minX) * SCALE + PADDING
-          const y = (room.position.z - minY) * SCALE + PADDING
-          const w = room.dimensions.width * SCALE
-          const h = room.dimensions.depth * SCALE
+          const geo = getRoomGeometry(room)
+          const x = (geo.x - minX) * SCALE + PADDING
+          const y = (geo.z - minY) * SCALE + PADDING
+          const w = geo.width * SCALE
+          const h = geo.depth * SCALE
 
           const racksInThisRoom = sceneConfig.racks.filter(r => r.roomId === room.id)
 
@@ -245,7 +263,7 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
                       fill={colors.dimension}
                       fontSize="10"
                     >
-                      {room.dimensions.width.toFixed(1)}m
+                      {geo.width.toFixed(1)}m
                     </text>
                   </g>
                   {/* Depth dimension */}
@@ -266,7 +284,7 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
                       fontSize="10"
                       transform={`rotate(-90, ${x - 25}, ${y + h / 2})`}
                     >
-                      {room.dimensions.depth.toFixed(1)}m
+                      {geo.depth.toFixed(1)}m
                     </text>
                   </g>
                 </>
@@ -274,8 +292,9 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
 
               {/* Racks */}
               {racksInThisRoom.map(rack => {
-                const rackX = x + (rack.position.x - room.position.x + room.dimensions.width / 2) * SCALE
-                const rackY = y + (rack.position.z - room.position.z + room.dimensions.depth / 2) * SCALE
+                const rackPos = rack.position || { x: 0, y: 0, z: 0 }
+                const rackX = x + (rackPos.x - geo.x + geo.width / 2) * SCALE
+                const rackY = y + (rackPos.z - geo.z + geo.depth / 2) * SCALE
                 const rackW = 0.6 * SCALE  // Standard rack width ~0.6m
                 const rackD = 1.2 * SCALE  // Standard rack depth ~1.2m
 
@@ -554,11 +573,12 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
     const room = sceneConfig.rooms.find(r => r.id === selectedRoomId)
     if (!room) return null
 
+    const roomGeo = getRoomGeometry(room)
     const racks = racksInRoom
     const DETAIL_SCALE = 80 // More detailed scale for room layout
     
-    const width = room.dimensions.width * DETAIL_SCALE + PADDING * 2
-    const height = room.dimensions.depth * DETAIL_SCALE + PADDING * 2 + 60
+    const width = roomGeo.width * DETAIL_SCALE + PADDING * 2
+    const height = roomGeo.depth * DETAIL_SCALE + PADDING * 2 + 60
 
     return (
       <svg
@@ -586,23 +606,23 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
         {/* Grid */}
         {showGrid && (
           <g className="grid" transform={`translate(${PADDING}, 60)`}>
-            {Array.from({ length: Math.ceil(room.dimensions.width) + 1 }).map((_, i) => (
+            {Array.from({ length: Math.ceil(roomGeo.width) + 1 }).map((_, i) => (
               <line
                 key={`v${i}`}
                 x1={i * DETAIL_SCALE}
                 y1={0}
                 x2={i * DETAIL_SCALE}
-                y2={room.dimensions.depth * DETAIL_SCALE}
+                y2={roomGeo.depth * DETAIL_SCALE}
                 stroke={colors.grid}
                 strokeWidth="0.5"
               />
             ))}
-            {Array.from({ length: Math.ceil(room.dimensions.depth) + 1 }).map((_, i) => (
+            {Array.from({ length: Math.ceil(roomGeo.depth) + 1 }).map((_, i) => (
               <line
                 key={`h${i}`}
                 x1={0}
                 y1={i * DETAIL_SCALE}
-                x2={room.dimensions.width * DETAIL_SCALE}
+                x2={roomGeo.width * DETAIL_SCALE}
                 y2={i * DETAIL_SCALE}
                 stroke={colors.grid}
                 strokeWidth="0.5"
@@ -616,8 +636,8 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
           <rect
             x="0"
             y="0"
-            width={room.dimensions.width * DETAIL_SCALE}
-            height={room.dimensions.depth * DETAIL_SCALE}
+            width={roomGeo.width * DETAIL_SCALE}
+            height={roomGeo.depth * DETAIL_SCALE}
             fill="none"
             stroke={colors.wall}
             strokeWidth="4"
@@ -625,8 +645,9 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
 
           {/* Racks with details */}
           {racks.map(rack => {
-            const rackX = (rack.position.x - room.position.x + room.dimensions.width / 2) * DETAIL_SCALE
-            const rackY = (rack.position.z - room.position.z + room.dimensions.depth / 2) * DETAIL_SCALE
+            const rackPos = rack.position || { x: 0, y: 0, z: 0 }
+            const rackX = (rackPos.x - roomGeo.x + roomGeo.width / 2) * DETAIL_SCALE
+            const rackY = (rackPos.z - roomGeo.z + roomGeo.depth / 2) * DETAIL_SCALE
             const rackW = 0.6 * DETAIL_SCALE
             const rackD = 1.2 * DETAIL_SCALE
             
@@ -692,7 +713,7 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
                 <line
                   x1="0"
                   y1={-15}
-                  x2={room.dimensions.width * DETAIL_SCALE}
+                  x2={roomGeo.width * DETAIL_SCALE}
                   y2={-15}
                   stroke={colors.dimension}
                   strokeWidth="1"
@@ -700,13 +721,13 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
                   markerEnd="url(#arrowEnd)"
                 />
                 <text
-                  x={room.dimensions.width * DETAIL_SCALE / 2}
+                  x={roomGeo.width * DETAIL_SCALE / 2}
                   y={-20}
                   textAnchor="middle"
                   fill={colors.dimension}
                   fontSize="10"
                 >
-                  {room.dimensions.width.toFixed(2)}m
+                  {roomGeo.width.toFixed(2)}m
                 </text>
               </g>
               <g className="dimension">
@@ -714,19 +735,19 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
                   x1={-15}
                   y1="0"
                   x2={-15}
-                  y2={room.dimensions.depth * DETAIL_SCALE}
+                  y2={roomGeo.depth * DETAIL_SCALE}
                   stroke={colors.dimension}
                   strokeWidth="1"
                 />
                 <text
                   x={-20}
-                  y={room.dimensions.depth * DETAIL_SCALE / 2}
+                  y={roomGeo.depth * DETAIL_SCALE / 2}
                   textAnchor="middle"
                   fill={colors.dimension}
                   fontSize="10"
-                  transform={`rotate(-90, -20, ${room.dimensions.depth * DETAIL_SCALE / 2})`}
+                  transform={`rotate(-90, -20, ${roomGeo.depth * DETAIL_SCALE / 2})`}
                 >
-                  {room.dimensions.depth.toFixed(2)}m
+                  {roomGeo.depth.toFixed(2)}m
                 </text>
               </g>
             </>
