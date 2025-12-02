@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
+import { useTheme } from "next-themes"
 import * as THREE from "three"
 import type { SceneConfig, DeviceType, Status4D, ColorMode } from "@/lib/types"
 import {
@@ -23,6 +24,22 @@ import {
   highlightRelatedDevices,
 } from "@/lib/three/scene-builder"
 import { status4DColors } from "@/lib/types"
+
+// Theme-aware colors for the 3D scene
+const sceneThemeColors = {
+  light: {
+    background: 0xf5f5f0, // Warm off-white
+    gridMain: 0xcccccc,
+    gridSecondary: 0xe5e5e5,
+    compassRing: 0xaaaaaa,
+  },
+  dark: {
+    background: 0x09090b, // Dark zinc
+    gridMain: 0x444444,
+    gridSecondary: 0x222222,
+    compassRing: 0x333333,
+  },
+}
 
 function disposeObject(object: THREE.Object3D) {
   object.traverse((child) => {
@@ -211,6 +228,7 @@ export function ThreeScene({
   selectedRackId = null,
   onRackSelect,
 }: ThreeSceneProps) {
+  const { resolvedTheme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
@@ -223,6 +241,7 @@ export function ThreeScene({
   const originPointRef = useRef<THREE.Group | null>(null)
   const compassRef = useRef<THREE.Group | null>(null)
   const connectionLinesRef = useRef<THREE.Group | null>(null)
+  const gridHelperRef = useRef<THREE.GridHelper | null>(null)
 
   // Initialize Three.js scene
   useEffect(() => {
@@ -234,7 +253,8 @@ export function ThreeScene({
 
     // Scene
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x09090b)
+    const themeColors = resolvedTheme === "light" ? sceneThemeColors.light : sceneThemeColors.dark
+    scene.background = new THREE.Color(themeColors.background)
     sceneRef.current = scene
 
     // Camera
@@ -268,8 +288,9 @@ export function ThreeScene({
     scene.add(hemisphereLight)
 
     // Grid helper
-    const gridHelper = new THREE.GridHelper(50, 50, 0x444444, 0x222222)
+    const gridHelper = new THREE.GridHelper(50, 50, themeColors.gridMain, themeColors.gridSecondary)
     scene.add(gridHelper)
+    gridHelperRef.current = gridHelper
 
     // Origin point indicator
     const createOriginPoint = () => {
@@ -324,7 +345,8 @@ export function ThreeScene({
       
       // Compass ring
       const ringGeometry = new THREE.RingGeometry(1.8, 2.0, 32)
-      const ringMaterial = new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.DoubleSide })
+      const ringMaterial = new THREE.MeshBasicMaterial({ color: themeColors.compassRing, side: THREE.DoubleSide })
+      ringMaterial.name = "compassRing" // Mark for theme updates
       const ring = new THREE.Mesh(ringGeometry, ringMaterial)
       ring.rotation.x = -Math.PI / 2
       compassGroup.add(ring)
@@ -718,6 +740,37 @@ export function ThreeScene({
       compassRef.current.visible = showCompass
     }
   }, [showCompass])
+
+  // Update scene colors when theme changes
+  useEffect(() => {
+    if (!sceneRef.current) return
+
+    const themeColors = resolvedTheme === "light" ? sceneThemeColors.light : sceneThemeColors.dark
+
+    // Update background
+    sceneRef.current.background = new THREE.Color(themeColors.background)
+
+    // Update grid helper
+    if (gridHelperRef.current) {
+      const gridMaterial = gridHelperRef.current.material as THREE.LineBasicMaterial
+      if (Array.isArray(gridHelperRef.current.material)) {
+        // Grid has two materials: center line and grid lines
+        (gridHelperRef.current.material[0] as THREE.LineBasicMaterial).color.setHex(themeColors.gridMain)
+        ;(gridHelperRef.current.material[1] as THREE.LineBasicMaterial).color.setHex(themeColors.gridSecondary)
+      }
+    }
+
+    // Update compass ring
+    if (compassRef.current) {
+      compassRef.current.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial) {
+          if (child.material.name === "compassRing") {
+            child.material.color.setHex(themeColors.compassRing)
+          }
+        }
+      })
+    }
+  }, [resolvedTheme])
 
   return <div ref={containerRef} className="w-full h-full" />
 }
