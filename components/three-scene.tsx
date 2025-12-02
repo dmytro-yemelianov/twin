@@ -21,6 +21,7 @@ import {
   highlight4DLines,
   getRelatedDeviceIds,
   highlightRelatedDevices,
+  animateSelectionBoxes,
   updateRackLabelVisibility,
 } from "@/lib/three/scene-builder"
 import { status4DColors } from "@/lib/types"
@@ -405,9 +406,16 @@ export function ThreeScene({
 
     // Animation loop
     let animationId: number
+    const clock = new THREE.Clock()
     const animate = () => {
       animationId = requestAnimationFrame(animate)
+      const elapsed = clock.getElapsedTime()
+      
       controls.update()
+      
+      // Animate selection bounding boxes
+      animateSelectionBoxes(elapsed)
+      
       renderer.render(scene, camera)
     }
     animate()
@@ -725,8 +733,8 @@ export function ThreeScene({
       : null
     const logicalEquipmentId = selectedDevice?.logicalEquipmentId || null
 
-    // Highlight the selected device and related devices
-    highlightRelatedDevices(sceneObjectsRef.current, relatedDeviceIds, selectedDeviceId)
+    // Highlight the selected device and related devices with animated bounding boxes
+    highlightRelatedDevices(sceneObjectsRef.current, relatedDeviceIds, selectedDeviceId, sceneRef.current || undefined)
 
     // Update 4D connection lines highlighting
     if (connectionLinesRef.current) {

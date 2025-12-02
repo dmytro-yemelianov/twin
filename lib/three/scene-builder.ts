@@ -1054,53 +1054,166 @@ export function getRelatedDeviceIds(
     .map(d => d.id)
 }
 
-// Highlight related devices using edge highlighting (not surface color)
+// Create animated selection bounding box
+function createSelectionBox(color: number, padding: number = 0.02): THREE.Group {
+  const group = new THREE.Group()
+  group.userData.isSelectionBox = true
+  
+  // Create dashed line material
+  const material = new THREE.LineDashedMaterial({
+    color: color,
+    dashSize: 0.05,
+    gapSize: 0.03,
+    linewidth: 2,
+    transparent: true,
+    opacity: 1,
+  })
+  
+  // Create corner markers for a more distinctive look
+  const cornerLength = 0.08
+  const positions: number[] = []
+  
+  // We'll set the actual positions when we know the bounding box size
+  // For now, create the line segments
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  
+  const lines = new THREE.LineSegments(geometry, material)
+  lines.userData.isSelectionLines = true
+  group.add(lines)
+  
+  return group
+}
+
+// Update selection box to fit a device
+function updateSelectionBoxGeometry(selectionBox: THREE.Group, targetGroup: THREE.Group, padding: number = 0.03) {
+  // Calculate bounding box of the target
+  const box = new THREE.Box3().setFromObject(targetGroup)
+  const min = box.min
+  const max = box.max
+  
+  // Add padding
+  min.x -= padding; min.y -= padding; min.z -= padding
+  max.x += padding; max.y += padding; max.z += padding
+  
+  const corners = [
+    [min.x, min.y, min.z], // 0: bottom-left-front
+    [max.x, min.y, min.z], // 1: bottom-right-front
+    [max.x, max.y, min.z], // 2: top-right-front
+    [min.x, max.y, min.z], // 3: top-left-front
+    [min.x, min.y, max.z], // 4: bottom-left-back
+    [max.x, min.y, max.z], // 5: bottom-right-back
+    [max.x, max.y, max.z], // 6: top-right-back
+    [min.x, max.y, max.z], // 7: top-left-back
+  ]
+  
+  // Create line segments for all 12 edges of the box
+  const edgeIndices = [
+    // Front face
+    [0, 1], [1, 2], [2, 3], [3, 0],
+    // Back face
+    [4, 5], [5, 6], [6, 7], [7, 4],
+    // Connecting edges
+    [0, 4], [1, 5], [2, 6], [3, 7],
+  ]
+  
+  const positions: number[] = []
+  for (const [a, b] of edgeIndices) {
+    positions.push(...corners[a], ...corners[b])
+  }
+  
+  // Find and update the line segments
+  selectionBox.traverse((child) => {
+    if (child instanceof THREE.LineSegments && child.userData.isSelectionLines) {
+      const geometry = child.geometry as THREE.BufferGeometry
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+      geometry.computeBoundingSphere()
+      child.computeLineDistances() // Required for dashed lines
+    }
+  })
+  
+  // Position the selection box at world origin (since positions are in world coords)
+  selectionBox.position.set(0, 0, 0)
+}
+
+// Store for active selection boxes
+const activeSelectionBoxes = new Map<string, THREE.Group>()
+
+// Animate selection boxes (call this in the render loop)
+export function animateSelectionBoxes(time: number) {
+  activeSelectionBoxes.forEach((box) => {
+    box.traverse((child) => {
+      if (child instanceof THREE.LineSegments) {
+        const mat = child.material as THREE.LineDashedMaterial
+        // Animate dash offset for marching ants effect
+        mat.dashSize = 0.05 + Math.sin(time * 3) * 0.01
+        // Pulse opacity
+        mat.opacity = 0.7 + Math.sin(time * 4) * 0.3
+      }
+    })
+  })
+}
+
+// Get all active selection boxes for cleanup
+export function getActiveSelectionBoxes(): THREE.Group[] {
+  return Array.from(activeSelectionBoxes.values())
+}
+
+// Highlight related devices using animated bounding boxes
 export function highlightRelatedDevices(
   sceneObjects: SceneObjects,
   relatedDeviceIds: string[],
-  selectedDeviceId: string | null
+  selectedDeviceId: string | null,
+  scene?: THREE.Scene
 ) {
+  // Clear existing selection boxes
+  activeSelectionBoxes.forEach((box, id) => {
+    if (scene) {
+      scene.remove(box)
+    }
+    box.traverse((child) => {
+      if (child instanceof THREE.LineSegments) {
+        child.geometry.dispose()
+        if (child.material instanceof THREE.Material) {
+          child.material.dispose()
+        }
+      }
+    })
+  })
+  activeSelectionBoxes.clear()
+  
   sceneObjects.devices.forEach((deviceGroup, deviceId) => {
     const isRelated = relatedDeviceIds.includes(deviceId)
     const isSelected = deviceId === selectedDeviceId
 
+    // Reset edge highlighting on device
     deviceGroup.traverse((child) => {
-      // Handle outline/edge highlighting
       if (child instanceof THREE.LineSegments && child.userData.isOutline) {
         const mat = child.material as THREE.LineBasicMaterial
-        if (isSelected) {
-          mat.color.setHex(0xffdd00) // Bright yellow for selected
-          mat.opacity = 1
-          mat.linewidth = 3
-        } else if (isRelated) {
-          mat.color.setHex(0x00ffff) // Cyan for related
-          mat.opacity = 0.9
-          mat.linewidth = 2
-        } else {
-          // Restore original
-          const origColor = mat.userData?.originalColor ?? 0x333333
-          const origOpacity = mat.userData?.originalOpacity ?? 0.5
-          mat.color.setHex(origColor)
-          mat.opacity = origOpacity
-          mat.linewidth = 1
-        }
+        const origColor = mat.userData?.originalColor ?? 0x333333
+        const origOpacity = mat.userData?.originalOpacity ?? 0.5
+        mat.color.setHex(origColor)
+        mat.opacity = origOpacity
+        mat.linewidth = 1
       }
       
-      // Subtle glow on mesh for selected only (not color change)
+      // Reset emissive on mesh
       if (child instanceof THREE.Mesh && child.userData.isMainMesh) {
         const mat = child.material as THREE.MeshStandardMaterial
-        if (isSelected) {
-          mat.emissive.setHex(0xffdd00)
-          mat.emissiveIntensity = 0.15 // Subtle glow
-        } else if (isRelated) {
-          mat.emissive.setHex(0x00ffff)
-          mat.emissiveIntensity = 0.1
-        } else {
-          mat.emissive.setHex(0x000000)
-          mat.emissiveIntensity = 0
-        }
+        mat.emissive.setHex(0x000000)
+        mat.emissiveIntensity = 0
       }
     })
+
+    // Create animated selection box for selected/related devices
+    if ((isSelected || isRelated) && scene) {
+      const color = isSelected ? 0xffdd00 : 0x00ffff // Yellow for selected, cyan for related
+      const selectionBox = createSelectionBox(color)
+      updateSelectionBoxGeometry(selectionBox, deviceGroup, isSelected ? 0.04 : 0.03)
+      
+      scene.add(selectionBox)
+      activeSelectionBoxes.set(deviceId, selectionBox)
+    }
   })
 }
 
