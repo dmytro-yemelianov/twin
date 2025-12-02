@@ -403,9 +403,10 @@ export function HierarchyGraph({
         },
       ],
       layout: {
-        name: 'cose',
-        animate: false,
+        name: 'grid',
         padding: 60,
+        rows: undefined,
+        cols: undefined,
       },
       minZoom: 0.15,
       maxZoom: 3,
@@ -510,16 +511,13 @@ export function HierarchyGraph({
         }
       })
 
-      // Re-run layout after visibility changes (with animation) only if collapsed nodes changed
-      if (collapsedNodes.size > 0) {
-        cy.layout({
-          name: 'cose',
-          animate: true,
-          animationDuration: 300,
-          padding: 60,
-          fit: false,
-        }).run()
-      }
+      // Re-run layout after visibility changes
+      cy.layout({
+        name: 'grid',
+        padding: 60,
+        animate: true,
+        animationDuration: 300,
+      }).run()
     } catch (e) {
       console.warn('Collapse effect error:', e)
     }
@@ -610,7 +608,7 @@ export function HierarchyGraph({
     if (!cy || cy.destroyed()) return
     try {
       cy.layout({
-        name: 'cose',
+        name: 'grid',
         animate: true,
         animationDuration: 500,
         padding: 60,
