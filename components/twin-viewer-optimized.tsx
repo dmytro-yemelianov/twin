@@ -6,7 +6,7 @@ import { useAppStore } from "@/lib/stores/app-store"
 import { useSceneConfig, useDeviceTypes } from "@/lib/hooks/use-data"
 import { findAIReadyCapacity } from "@/lib/ai-capacity"
 import { useDebouncedCallback } from "@/lib/hooks/use-debounce"
-import { Eye, EyeOff, Menu, Package, Layout, Calendar, BarChart3, Edit3, GitBranch, Check, Minus, Plus, Clock, Sparkles, Cpu, History, Target, Rocket, ChevronRight, MapPin, Building2, Globe, Layers, DoorOpen, Server, Tag } from "lucide-react"
+import { Eye, EyeOff, Menu, Package, Layout, Calendar, BarChart3, Edit3, GitBranch, Check, Minus, Plus, Clock, Sparkles, Cpu, History, Target, Rocket, ChevronRight, MapPin, Building2, Globe, Layers, DoorOpen, Server, Tag, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -53,6 +53,11 @@ const InventoryPanelDynamic = dynamic(() => import("./inventory-panel").then(mod
 })
 
 const HierarchyGraphDynamic = dynamic(() => import("./hierarchy-graph").then(mod => ({ default: mod.HierarchyGraph })), {
+  loading: () => <SceneSkeleton />,
+  ssr: false
+})
+
+const DrawingGeneratorDynamic = dynamic(() => import("./drawing-generator").then(mod => ({ default: mod.DrawingGenerator })), {
   loading: () => <SceneSkeleton />,
   ssr: false
 })
@@ -715,6 +720,24 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
                 <p className="text-xs text-muted-foreground">View equipment hierarchy as node graph</p>
               </TooltipContent>
             </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setCurrentTab('drawings')}
+                  className={`w-8 h-7 rounded-md transition-all flex items-center justify-center ${
+                    currentTab === 'drawings'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>2D Drawings</p>
+                <p className="text-xs text-muted-foreground">Floor plans, rack elevations, exports</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           {/* Display Options Group */}
@@ -949,6 +972,15 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
                     selectBuilding(nodeId)
                   }
                 }}
+              />
+            </div>
+          )}
+
+          {currentTab === 'drawings' && sceneConfig && (
+            <div className="h-full">
+              <DrawingGeneratorDynamic
+                sceneConfig={sceneConfig}
+                siteName={site.name}
               />
             </div>
           )}
