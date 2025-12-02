@@ -144,12 +144,12 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
 
   // 3D View control handlers
   const handleSetView = (view: string) => {
-    setCurrentView3D(view)
+    setCurrentView(view)
     setTriggerSetView({ view, timestamp: Date.now() })
   }
 
   const handleResetCamera = () => {
-    setCurrentView3D('perspective')
+    setCurrentView('perspective')
     setTriggerResetCamera(prev => prev + 1)
   }
 
