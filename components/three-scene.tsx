@@ -401,8 +401,10 @@ export function ThreeScene({
       
       renderer.render(scene, camera)
       
-      // Render ViewHelper (must be after main render)
+      // Render ViewHelper (must be after main render with autoClear disabled)
+      renderer.autoClear = false
       viewHelper.render(renderer)
+      renderer.autoClear = true
     }
     animate()
 
