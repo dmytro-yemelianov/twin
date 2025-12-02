@@ -790,15 +790,14 @@ export function highlightRacks(rackGroups: THREE.Group[], highlight: boolean) {
   rackGroups.forEach((rack) => {
     rack.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        if (Array.isArray(child.material)) {
-          child.material.forEach((mat) => {
+        const materials = Array.isArray(child.material) ? child.material : [child.material]
+        materials.forEach((mat) => {
+          // Only set emissive on materials that support it (MeshStandardMaterial, MeshPhongMaterial, etc.)
+          if (mat && 'emissive' in mat && mat.emissive) {
             mat.emissive.setStyle(highlight ? "#22c55e" : "#000000")
             mat.emissiveIntensity = highlight ? 0.6 : 0
-          })
-        } else {
-          child.material.emissive.setStyle(highlight ? "#22c55e" : "#000000")
-          child.material.emissiveIntensity = highlight ? 0.6 : 0
-        }
+          }
+        })
       }
     })
   })
@@ -861,15 +860,14 @@ export function updateRackLabelsVisibility(sceneObjects: SceneObjects, visible: 
 export function highlightRack(rack: THREE.Group, highlight: boolean) {
   rack.traverse((child) => {
     if (child instanceof THREE.Mesh) {
-      if (Array.isArray(child.material)) {
-        child.material.forEach((mat) => {
+      const materials = Array.isArray(child.material) ? child.material : [child.material]
+      materials.forEach((mat) => {
+        // Only set emissive on materials that support it (MeshStandardMaterial, MeshPhongMaterial, etc.)
+        if (mat && 'emissive' in mat && mat.emissive) {
           mat.emissive.setStyle(highlight ? "#3b82f6" : "#000000")
           mat.emissiveIntensity = highlight ? 0.5 : 0
-        })
-      } else {
-        child.material.emissive.setStyle(highlight ? "#3b82f6" : "#000000")
-        child.material.emissiveIntensity = highlight ? 0.5 : 0
-      }
+        }
+      })
     }
   })
 }
