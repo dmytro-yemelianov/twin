@@ -356,7 +356,7 @@ export function ThreeScene({
 
     // Create ViewHelper (CAD-style view cube)
     const viewHelper = new ViewHelper(camera, renderer.domElement)
-    viewHelper.center.set(1, 1, 0) // Position in bottom-right corner
+    viewHelper.center.set(0.85, -0.85, 0) // Position in bottom-right corner (NDC: 1=right, -1=bottom)
     viewHelperRef.current = viewHelper
     
     // Handle ViewHelper click events
@@ -392,9 +392,15 @@ export function ThreeScene({
     const clock = new THREE.Clock()
     const animate = () => {
       animationId = requestAnimationFrame(animate)
+      const delta = clock.getDelta()
       const elapsed = clock.getElapsedTime()
       
       controls.update()
+      
+      // Update ViewHelper animation (for smooth camera transitions)
+      if (viewHelper.animating) {
+        viewHelper.update(delta)
+      }
 
       // Animate selection bounding boxes
       animateSelectionBoxes(elapsed)
