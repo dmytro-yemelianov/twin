@@ -1023,21 +1023,22 @@ export function ThreeScene({
         >
           {/* Arrow indicator - points right at 0°, rotated to point at rack */}
           <div 
-            className="relative"
+            className="relative flex items-center justify-center"
             style={{ transform: `rotate(${indicator.angle}deg)` }}
           >
             <svg 
-              width="24" 
-              height="24" 
-              viewBox="0 0 24 24" 
-              className="drop-shadow-md"
+              width="20" 
+              height="20" 
+              viewBox="0 0 20 20" 
+              className="drop-shadow"
             >
-              {/* Arrow pointing right → */}
-              <path
-                d="M4 12 L16 12 L16 8 L22 12 L16 16 L16 12 L4 12 Z"
+              {/* Simple triangle arrow pointing right → */}
+              <polygon
+                points="0,4 16,10 0,16"
                 fill={resolvedTheme === 'light' ? '#22c55e' : '#4ade80'}
                 stroke={resolvedTheme === 'light' ? '#15803d' : '#166534'}
                 strokeWidth="1"
+                strokeLinejoin="round"
                 className="group-hover:fill-emerald-400 transition-colors"
               />
             </svg>
