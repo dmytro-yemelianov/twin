@@ -370,6 +370,7 @@ function createDeviceGeometry(uHeight: number, category: string): THREE.Group {
   }
 
   // Main chassis body - lighter colors
+  // Equipment is oriented with FRONT facing negative Z (same as rack front)
   const geometry = new THREE.BoxGeometry(width, height, depth)
   const material = new THREE.MeshStandardMaterial({
     color: baseColor,
@@ -381,7 +382,7 @@ function createDeviceGeometry(uHeight: number, category: string): THREE.Group {
   chassis.userData.isMainMesh = true
   group.add(chassis)
 
-  // Front panel with subtle bezel
+  // Front panel with subtle bezel - FRONT is at negative Z (aligns with rack front)
   const frontPanelGeometry = new THREE.BoxGeometry(width + 0.02, height, 0.03)
   const frontPanelMaterial = new THREE.MeshStandardMaterial({
     color: 0x3a3a3a,
@@ -389,10 +390,10 @@ function createDeviceGeometry(uHeight: number, category: string): THREE.Group {
     roughness: 0.3,
   })
   const frontPanel = new THREE.Mesh(frontPanelGeometry, frontPanelMaterial)
-  frontPanel.position.z = depth / 2 + 0.015
+  frontPanel.position.z = -depth / 2 - 0.015 // Front faces negative Z
   group.add(frontPanel)
 
-  // Add LED indicators on front panel
+  // Add LED indicators on front panel (negative Z side)
   const ledCount = Math.max(2, Math.floor(uHeight / 2))
   const ledGeometry = new THREE.SphereGeometry(0.008, 8, 8)
 
@@ -408,7 +409,7 @@ function createDeviceGeometry(uHeight: number, category: string): THREE.Group {
     led.position.set(
       -width * 0.3 + (i % 2) * width * 0.6,
       height * 0.3 - Math.floor(i / 2) * (height * 0.2),
-      depth / 2 + 0.04,
+      -depth / 2 - 0.04, // Front side (negative Z)
     )
     group.add(led)
   }
