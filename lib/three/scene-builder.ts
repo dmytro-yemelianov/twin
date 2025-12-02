@@ -665,13 +665,11 @@ export function updateDeviceVisibility(device: THREE.Group, visible: boolean) {
 
 export function updateDeviceColor(device: THREE.Group, color: string) {
   device.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
-      if (Array.isArray(child.material)) {
-        child.material.forEach((mat) => {
-          mat.color.setStyle(color)
-        })
-      } else {
-        child.material.color.setStyle(color)
+    // Only update main mesh materials, not outlines or other geometry
+    if (child instanceof THREE.Mesh && child.userData.isMainMesh) {
+      const mat = child.material as THREE.MeshStandardMaterial
+      if (mat && mat.color && typeof mat.color.setStyle === 'function') {
+        mat.color.setStyle(color)
       }
     }
   })
