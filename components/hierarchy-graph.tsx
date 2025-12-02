@@ -127,8 +127,8 @@ export function HierarchyGraph({
       childrenMap.get(parentId)!.push(childId)
     }
 
-    // Site node (root)
-    const siteId = sceneConfig.siteId || 'site-root'
+    // Site node (root) - always use 'site-root' for consistency
+    const siteId = 'site-root'
     nodes.push({
       data: { 
         id: siteId, 
@@ -403,7 +403,7 @@ export function HierarchyGraph({
         padding: 60,
         spacingFactor: 1.4,
         avoidOverlap: true,
-        roots: `#${sceneConfig.siteId || 'site-root'}`,
+        roots: '#site-root',
       },
       minZoom: 0.15,
       maxZoom: 3,
@@ -474,7 +474,7 @@ export function HierarchyGraph({
     return () => {
       cy.destroy()
     }
-  }, [graphData, colors, onNodeSelect, getIconUrl, toggleCollapse, sceneConfig?.siteId])
+  }, [graphData, colors, onNodeSelect, getIconUrl, toggleCollapse])
 
   // Handle collapse/expand visibility
   useEffect(() => {
@@ -516,13 +516,13 @@ export function HierarchyGraph({
         padding: 60,
         spacingFactor: 1.4,
         avoidOverlap: true,
-        roots: `#${sceneConfig.siteId || 'site-root'}`,
+        roots: '#site-root',
         animate: true,
         animationDuration: 300,
         fit: false,
       }).run()
     }
-  }, [collapsedNodes, getDescendants, sceneConfig.siteId])
+  }, [collapsedNodes, getDescendants])
 
   // Update selected node styling
   useEffect(() => {
@@ -600,11 +600,11 @@ export function HierarchyGraph({
       padding: 60,
       spacingFactor: 1.4,
       avoidOverlap: true,
-      roots: `#${sceneConfig.siteId || 'site-root'}`,
+      roots: '#site-root',
       animate: true,
       animationDuration: 500,
     }).run()
-  }, [sceneConfig.siteId])
+  }, [])
 
   const handleExpandAll = useCallback(() => {
     setCollapsedNodes(new Set())
