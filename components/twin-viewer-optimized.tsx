@@ -663,7 +663,6 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
                 showCompass={showCompass}
                 show4DLines={show4DLines}
                 showLabels={showLabels}
-                onCameraView={setCurrentView}
                 triggerResetCamera={triggerResetCamera}
                 triggerFitView={triggerFitView}
                 triggerZoomIn={triggerZoomIn}
