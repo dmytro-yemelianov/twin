@@ -12,73 +12,54 @@ interface HierarchyGraphProps {
   selectedNodeId?: string | null
 }
 
+// Node emojis by type
+const nodeEmojis: Record<string, string> = {
+  site: '🌐',
+  building: '🏢',
+  floor: '🏗️',
+  room: '🚪',
+  rack: '🗄️',
+  device: '💻',
+}
+
 // Theme colors
 const themeColors = {
   light: {
-    background: '#f8f9fa',
+    background: '#f8fafc',
     site: '#6366f1',
     building: '#8b5cf6',
     floor: '#a855f7',
     room: '#22c55e',
     rack: '#3b82f6',
     device: '#f59e0b',
-    edge: '#9ca3af',
-    text: '#1f2937',
+    edge: '#94a3b8',
+    text: '#1e293b',
     selectedBorder: '#ef4444',
-    hoverBorder: '#3b82f6',
-    collapsedBg: '#fef3c7',
+    hoverBorder: '#0ea5e9',
   },
   dark: {
-    background: '#09090b',
+    background: '#0f172a',
     site: '#818cf8',
     building: '#a78bfa',
     floor: '#c084fc',
     room: '#4ade80',
     rack: '#60a5fa',
     device: '#fbbf24',
-    edge: '#52525b',
-    text: '#fafafa',
+    edge: '#475569',
+    text: '#f1f5f9',
     selectedBorder: '#f87171',
-    hoverBorder: '#60a5fa',
-    collapsedBg: '#422006',
+    hoverBorder: '#38bdf8',
   },
-}
-
-// SVG icons as data URIs (Lucide-style icons)
-const createIconSvg = (pathData: string, color: string, bgColor: string) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="0" y="0" width="24" height="24" rx="4" fill="${bgColor}" stroke="none"/>
-    ${pathData}
-  </svg>`
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`
-}
-
-// Icon path data (Lucide-style)
-const iconPaths = {
-  // Globe icon for Site
-  site: '<circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9z"/>',
-  // Building icon
-  building: '<rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/>',
-  // Layers icon for Floor
-  floor: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
-  // Door/Room icon
-  room: '<path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14"/><path d="M2 20h20"/><path d="M14 12v.01"/>',
-  // Server/Rack icon
-  rack: '<rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>',
-  // CPU/Device icon
-  device: '<rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>',
-  // Collapsed indicator (plus)
-  collapsed: '<circle cx="12" cy="12" r="9" fill="none"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>',
 }
 
 // Node sizes by type
 const nodeSizes: Record<string, number> = {
-  site: 55,
-  building: 48,
-  floor: 42,
-  room: 38,
-  rack: 34,
-  device: 28,
+  site: 70,
+  building: 60,
+  floor: 50,
+  room: 45,
+  rack: 40,
+  device: 35,
 }
 
 export function HierarchyGraph({ 
@@ -94,16 +75,6 @@ export function HierarchyGraph({
   const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; type: string; childCount?: number } | null>(null)
 
   const colors = resolvedTheme === 'light' ? themeColors.light : themeColors.dark
-
-  // Generate icon URLs
-  const getIconUrl = useCallback((type: string, isCollapsed: boolean = false) => {
-    const iconColor = '#ffffff'
-    const bgColor = colors[type as keyof typeof colors] || colors.device
-    if (isCollapsed) {
-      return createIconSvg(iconPaths[type as keyof typeof iconPaths] || iconPaths.device, iconColor, colors.collapsedBg)
-    }
-    return createIconSvg(iconPaths[type as keyof typeof iconPaths] || iconPaths.device, iconColor, bgColor as string)
-  }, [colors])
 
   // Build graph data from sceneConfig
   const graphData = useMemo(() => {
@@ -127,12 +98,13 @@ export function HierarchyGraph({
       childrenMap.get(parentId)!.push(childId)
     }
 
-    // Site node (root) - always use 'site-root' for consistency
+    // Site node (root)
     const siteId = 'site-root'
     nodes.push({
       data: { 
         id: siteId, 
-        label: siteName, 
+        label: siteName,
+        emoji: nodeEmojis.site,
         type: 'site',
         nodeType: 'site',
         hasChildren: true,
@@ -140,16 +112,16 @@ export function HierarchyGraph({
     })
 
     // Buildings
-    const buildings = sceneConfig.buildings || [{ id: 'building-default', name: 'Building', siteId }]
+    const buildings = sceneConfig.buildings || [{ id: 'building-default', name: 'Building' }]
     buildings.forEach((building) => {
       const buildingId = building.id || `building-${buildings.indexOf(building)}`
       nodes.push({
         data: { 
           id: buildingId, 
-          label: building.name || 'Building', 
+          label: building.name || 'Building',
+          emoji: nodeEmojis.building,
           type: 'building',
           nodeType: 'building',
-          parent: siteId,
           hasChildren: true,
         }
       })
@@ -164,10 +136,10 @@ export function HierarchyGraph({
       nodes.push({
         data: { 
           id: floor.id, 
-          label: floor.name, 
+          label: floor.name,
+          emoji: nodeEmojis.floor,
           type: 'floor',
           nodeType: 'floor',
-          parent: parentBuildingId,
           hasChildren: true,
         }
       })
@@ -184,10 +156,10 @@ export function HierarchyGraph({
       nodes.push({
         data: { 
           id: room.id, 
-          label: room.name, 
+          label: room.name,
+          emoji: nodeEmojis.room,
           type: 'room',
           nodeType: 'room',
-          parent: parentId,
           hasChildren: true,
         }
       })
@@ -200,10 +172,10 @@ export function HierarchyGraph({
       nodes.push({
         data: { 
           id: rack.id, 
-          label: rack.name, 
+          label: rack.name,
+          emoji: nodeEmojis.rack,
           type: 'rack',
           nodeType: 'rack',
-          parent: rack.roomId,
           hasChildren: true,
         }
       })
@@ -216,11 +188,11 @@ export function HierarchyGraph({
       nodes.push({
         data: { 
           id: device.id, 
-          label: device.name.length > 12 ? device.name.substring(0, 10) + '...' : device.name, 
+          label: device.name.length > 15 ? device.name.substring(0, 12) + '...' : device.name,
           fullName: device.name,
+          emoji: nodeEmojis.device,
           type: 'device',
           nodeType: 'device',
-          parent: device.rackId,
           category: device.category,
           status: device.status4D,
           hasChildren: false,
@@ -276,103 +248,97 @@ export function HierarchyGraph({
       container: containerRef.current,
       elements: [...graphData.nodes, ...graphData.edges],
       style: [
-        // Node styles with icon backgrounds
+        // Base node style - emoji as content
         {
           selector: 'node',
           style: {
-            'label': 'data(label)',
-            'text-valign': 'bottom',
+            'content': 'data(emoji)',
+            'text-valign': 'center',
             'text-halign': 'center',
-            'text-margin-y': 8,
-            'font-size': 10,
-            'font-family': 'Inter, system-ui, sans-serif',
-            'color': colors.text,
-            'text-outline-width': 2,
-            'text-outline-color': colors.background,
-            'background-color': colors.device,
-            'border-width': 2,
-            'border-color': colors.device,
-            'shape': 'ellipse',
+            'font-size': 24,
+            'width': 50,
+            'height': 50,
+            'background-color': 'transparent',
+            'border-width': 0,
+            'text-outline-width': 0,
           }
         },
-        // Type-specific styles with colors
+        // Type-specific sizes
         {
           selector: 'node[type="site"]',
           style: {
-            'background-color': colors.site,
-            'border-color': colors.site,
+            'font-size': 36,
             'width': nodeSizes.site,
             'height': nodeSizes.site,
-            'font-size': 13,
-            'font-weight': 'bold',
           }
         },
         {
           selector: 'node[type="building"]',
           style: {
-            'background-color': colors.building,
-            'border-color': colors.building,
+            'font-size': 32,
             'width': nodeSizes.building,
             'height': nodeSizes.building,
-            'font-size': 11,
           }
         },
         {
           selector: 'node[type="floor"]',
           style: {
-            'background-color': colors.floor,
-            'border-color': colors.floor,
+            'font-size': 28,
             'width': nodeSizes.floor,
             'height': nodeSizes.floor,
-            'font-size': 10,
           }
         },
         {
           selector: 'node[type="room"]',
           style: {
-            'background-color': colors.room,
-            'border-color': colors.room,
+            'font-size': 26,
             'width': nodeSizes.room,
             'height': nodeSizes.room,
-            'font-size': 10,
           }
         },
         {
           selector: 'node[type="rack"]',
           style: {
-            'background-color': colors.rack,
-            'border-color': colors.rack,
+            'font-size': 24,
             'width': nodeSizes.rack,
             'height': nodeSizes.rack,
-            'font-size': 9,
           }
         },
         {
           selector: 'node[type="device"]',
           style: {
-            'background-color': colors.device,
-            'border-color': colors.device,
+            'font-size': 20,
             'width': nodeSizes.device,
             'height': nodeSizes.device,
-            'font-size': 8,
+          }
+        },
+        // Hover effect - add colored circle background
+        {
+          selector: 'node:active, node:grabbed',
+          style: {
+            'background-color': colors.hoverBorder,
+            'background-opacity': 0.3,
           }
         },
         // Selected node
         {
           selector: 'node:selected',
           style: {
+            'background-color': colors.selectedBorder,
+            'background-opacity': 0.3,
             'border-width': 3,
             'border-color': colors.selectedBorder,
-            'border-opacity': 1,
           }
         },
-        // Collapsed node style
+        // Collapsed node style - add indicator
         {
           selector: 'node.collapsed',
           style: {
             'border-width': 3,
             'border-color': colors.device,
             'border-style': 'dashed',
+            'background-color': colors.device,
+            'background-opacity': 0.15,
           }
         },
         // Hidden nodes
@@ -393,23 +359,31 @@ export function HierarchyGraph({
         {
           selector: 'edge',
           style: {
-            'width': 1.5,
+            'width': 2,
             'line-color': colors.edge,
             'target-arrow-color': colors.edge,
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
-            'arrow-scale': 0.7,
+            'arrow-scale': 0.8,
+            'opacity': 0.7,
           }
         },
       ],
       layout: {
-        name: 'grid',
-        padding: 60,
-        rows: undefined,
-        cols: undefined,
+        name: 'cose',
+        animate: false,
+        padding: 80,
+        nodeRepulsion: () => 8000,
+        idealEdgeLength: () => 80,
+        edgeElasticity: () => 100,
+        nestingFactor: 1.2,
+        gravity: 0.25,
+        numIter: 1000,
+        coolingFactor: 0.95,
+        minTemp: 1.0,
       },
-      minZoom: 0.15,
-      maxZoom: 3,
+      minZoom: 0.1,
+      maxZoom: 4,
     })
 
     cyRef.current = cy
@@ -436,7 +410,6 @@ export function HierarchyGraph({
     // Hover for tooltip
     cy.on('mouseover', 'node', (evt) => {
       const node = evt.target
-      const nodeId = node.id()
       const nodeType = node.data('nodeType')
       const label = node.data('fullName') || node.data('label')
       const childCount = node.data('childCount')
@@ -450,11 +423,11 @@ export function HierarchyGraph({
         childCount,
       })
 
-      // Highlight effect
+      // Highlight - add subtle background
+      const typeColor = colors[nodeType as keyof typeof colors] || colors.device
       node.style({
-        'border-width': 3,
-        'border-color': colors.hoverBorder,
-        'border-opacity': 1,
+        'background-color': typeColor,
+        'background-opacity': 0.25,
       })
     })
 
@@ -465,18 +438,21 @@ export function HierarchyGraph({
       // Reset style unless selected or collapsed
       if (!node.selected() && !node.hasClass('collapsed')) {
         node.style({
-          'border-width': 0,
+          'background-color': 'transparent',
+          'background-opacity': 0,
         })
       }
     })
 
-    // Fit to view
-    cy.fit(undefined, 60)
+    // Fit to view after layout
+    cy.one('layoutstop', () => {
+      cy.fit(undefined, 80)
+    })
 
     return () => {
       cy.destroy()
     }
-  }, [graphData, colors, onNodeSelect, getIconUrl, toggleCollapse])
+  }, [graphData, colors, onNodeSelect, toggleCollapse])
 
   // Handle collapse/expand visibility
   useEffect(() => {
@@ -511,13 +487,17 @@ export function HierarchyGraph({
         }
       })
 
-      // Re-run layout after visibility changes
-      cy.layout({
-        name: 'grid',
-        padding: 60,
-        animate: true,
-        animationDuration: 300,
-      }).run()
+      // Re-run layout if there are collapsed nodes
+      if (collapsedNodes.size > 0) {
+        cy.layout({
+          name: 'cose',
+          animate: true,
+          animationDuration: 400,
+          padding: 80,
+          nodeRepulsion: () => 8000,
+          fit: false,
+        }).run()
+      }
     } catch (e) {
       console.warn('Collapse effect error:', e)
     }
@@ -529,9 +509,14 @@ export function HierarchyGraph({
     if (!cy || cy.destroyed()) return
 
     try {
+      // Clear previous selections visually
       cy.nodes().forEach((node) => {
         if (!node.hasClass('collapsed') && node.id() !== selectedNodeId) {
-          node.style({ 'border-width': 0 })
+          node.style({ 
+            'background-color': 'transparent',
+            'background-opacity': 0,
+            'border-width': 0 
+          })
         }
       })
 
@@ -539,6 +524,8 @@ export function HierarchyGraph({
         const selectedNode = cy.getElementById(selectedNodeId)
         if (selectedNode.length > 0) {
           selectedNode.style({
+            'background-color': colors.selectedBorder,
+            'background-opacity': 0.3,
             'border-width': 3,
             'border-color': colors.selectedBorder,
           })
@@ -549,7 +536,7 @@ export function HierarchyGraph({
     }
   }, [selectedNodeId, colors])
 
-  // Update icons on theme change
+  // Update on theme change
   useEffect(() => {
     const cy = cyRef.current
     if (!cy || cy.destroyed()) return
@@ -558,20 +545,6 @@ export function HierarchyGraph({
       if (containerRef.current) {
         containerRef.current.style.backgroundColor = colors.background
       }
-
-      // Update node colors
-      const types = ['site', 'building', 'floor', 'room', 'rack', 'device'] as const
-      types.forEach(type => {
-        const typeColor = colors[type]
-        cy.nodes(`[type="${type}"]`).forEach(node => {
-          node.style({
-            'background-color': typeColor,
-            'border-color': typeColor,
-            'color': colors.text,
-            'text-outline-color': colors.background,
-          })
-        })
-      })
 
       // Update edge colors
       cy.edges().forEach((edge) => {
@@ -583,12 +556,12 @@ export function HierarchyGraph({
     } catch (e) {
       console.warn('Theme effect error:', e)
     }
-  }, [colors, getIconUrl, collapsedNodes])
+  }, [colors])
 
   // Control handlers
   const handleFitView = useCallback(() => {
     const cy = cyRef.current
-    if (cy && !cy.destroyed()) cy.fit(undefined, 60)
+    if (cy && !cy.destroyed()) cy.fit(undefined, 80)
   }, [])
 
   const handleZoomIn = useCallback(() => {
@@ -608,10 +581,12 @@ export function HierarchyGraph({
     if (!cy || cy.destroyed()) return
     try {
       cy.layout({
-        name: 'grid',
+        name: 'cose',
         animate: true,
-        animationDuration: 500,
-        padding: 60,
+        animationDuration: 600,
+        padding: 80,
+        nodeRepulsion: () => 8000,
+        idealEdgeLength: () => 80,
       }).run()
     } catch (e) {
       console.warn('Relayout error:', e)
@@ -665,136 +640,140 @@ export function HierarchyGraph({
       />
 
       {/* Legend */}
-      <div className="absolute top-4 left-4 z-10 bg-card/90 backdrop-blur rounded-lg p-3 border border-border/50 shadow-lg">
-        <div className="text-xs font-medium mb-2 text-muted-foreground">Legend</div>
-        <div className="space-y-1.5">
-          {(['site', 'building', 'floor', 'room', 'rack', 'device'] as const).map((type) => (
-            <div key={type} className="flex items-center gap-2 text-xs">
-              <div 
-                className="w-4 h-4 rounded"
-                style={{ backgroundColor: colors[type] }}
-              />
+      <div className="absolute top-4 left-4 z-10 bg-card/95 backdrop-blur-sm rounded-xl p-4 border border-border/50 shadow-xl">
+        <div className="text-xs font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Legend</div>
+        <div className="space-y-2">
+          {Object.entries(nodeEmojis).map(([type, emoji]) => (
+            <div key={type} className="flex items-center gap-3 text-sm">
+              <span className="text-lg">{emoji}</span>
               <span className="capitalize text-foreground">{type}</span>
             </div>
           ))}
         </div>
-        <div className="mt-3 pt-2 border-t border-border/50 text-xs text-muted-foreground">
+        <div className="mt-4 pt-3 border-t border-border/50 text-xs text-muted-foreground">
           <span className="font-medium">Double-click</span> to collapse/expand
         </div>
       </div>
 
       {/* Stats */}
-      <div className="absolute top-4 right-4 z-10 bg-card/90 backdrop-blur rounded-lg p-3 border border-border/50 shadow-lg">
-        <div className="text-xs font-medium mb-2 text-muted-foreground">Statistics</div>
-        <div className="space-y-1 text-xs">
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Buildings:</span>
-            <span className="font-medium">{sceneConfig.buildings?.length || 1}</span>
+      <div className="absolute top-4 right-4 z-10 bg-card/95 backdrop-blur-sm rounded-xl p-4 border border-border/50 shadow-xl">
+        <div className="text-xs font-semibold mb-3 text-muted-foreground uppercase tracking-wide">Statistics</div>
+        <div className="space-y-1.5 text-sm">
+          <div className="flex justify-between gap-6">
+            <span className="text-muted-foreground">Buildings</span>
+            <span className="font-semibold tabular-nums">{sceneConfig.buildings?.length || 1}</span>
           </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Floors:</span>
-            <span className="font-medium">{sceneConfig.floors?.length || 0}</span>
+          <div className="flex justify-between gap-6">
+            <span className="text-muted-foreground">Floors</span>
+            <span className="font-semibold tabular-nums">{sceneConfig.floors?.length || 0}</span>
           </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Rooms:</span>
-            <span className="font-medium">{sceneConfig.rooms.length}</span>
+          <div className="flex justify-between gap-6">
+            <span className="text-muted-foreground">Rooms</span>
+            <span className="font-semibold tabular-nums">{sceneConfig.rooms.length}</span>
           </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Racks:</span>
-            <span className="font-medium">{sceneConfig.racks.length}</span>
+          <div className="flex justify-between gap-6">
+            <span className="text-muted-foreground">Racks</span>
+            <span className="font-semibold tabular-nums">{sceneConfig.racks.length}</span>
           </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Devices:</span>
-            <span className="font-medium">{sceneConfig.devices.length}</span>
+          <div className="flex justify-between gap-6">
+            <span className="text-muted-foreground">Devices</span>
+            <span className="font-semibold tabular-nums">{sceneConfig.devices.length}</span>
           </div>
         </div>
       </div>
 
       {/* Controls */}
       <div className="absolute bottom-4 left-4 z-10 flex flex-wrap gap-2">
-        <div className="flex gap-1 bg-card/90 backdrop-blur border border-border/50 rounded-lg p-1">
+        <div className="flex gap-1 bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl p-1.5 shadow-lg">
           <button
             onClick={handleZoomIn}
-            className="px-2 py-1 text-xs hover:bg-accent rounded transition-colors"
+            className="w-8 h-8 flex items-center justify-center text-sm hover:bg-accent rounded-lg transition-colors"
             title="Zoom In"
           >
             +
           </button>
           <button
             onClick={handleZoomOut}
-            className="px-2 py-1 text-xs hover:bg-accent rounded transition-colors"
+            className="w-8 h-8 flex items-center justify-center text-sm hover:bg-accent rounded-lg transition-colors"
             title="Zoom Out"
           >
             −
           </button>
           <button
             onClick={handleFitView}
-            className="px-2 py-1 text-xs hover:bg-accent rounded transition-colors"
+            className="px-3 h-8 flex items-center justify-center text-xs hover:bg-accent rounded-lg transition-colors"
             title="Fit View"
           >
             Fit
           </button>
           <button
             onClick={handleRelayout}
-            className="px-2 py-1 text-xs hover:bg-accent rounded transition-colors"
+            className="w-8 h-8 flex items-center justify-center text-sm hover:bg-accent rounded-lg transition-colors"
             title="Re-layout"
           >
             ↻
           </button>
         </div>
-        <div className="flex gap-1 bg-card/90 backdrop-blur border border-border/50 rounded-lg p-1">
+        <div className="flex gap-1 bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl p-1.5 shadow-lg">
           <button
             onClick={handleExpandAll}
-            className="px-2 py-1 text-xs hover:bg-accent rounded transition-colors"
+            className="px-3 h-8 flex items-center justify-center text-xs hover:bg-accent rounded-lg transition-colors"
             title="Expand All"
           >
             Expand
           </button>
           <button
             onClick={() => handleCollapseToLevel(1)}
-            className="px-2 py-1 text-xs hover:bg-accent rounded transition-colors"
+            className="px-3 h-8 flex items-center justify-center text-xs hover:bg-accent rounded-lg transition-colors"
             title="Collapse to Buildings"
           >
-            Buildings
+            🏢
           </button>
           <button
             onClick={() => handleCollapseToLevel(3)}
-            className="px-2 py-1 text-xs hover:bg-accent rounded transition-colors"
+            className="px-3 h-8 flex items-center justify-center text-xs hover:bg-accent rounded-lg transition-colors"
             title="Collapse to Rooms"
           >
-            Rooms
+            🚪
           </button>
           <button
             onClick={() => handleCollapseToLevel(4)}
-            className="px-2 py-1 text-xs hover:bg-accent rounded transition-colors"
+            className="px-3 h-8 flex items-center justify-center text-xs hover:bg-accent rounded-lg transition-colors"
             title="Collapse to Racks"
           >
-            Racks
+            🗄️
           </button>
         </div>
       </div>
 
       {/* Controls hint */}
-      <div className="absolute bottom-4 right-4 z-10 text-xs text-muted-foreground bg-card/80 backdrop-blur rounded px-2 py-1">
-        <span className="font-medium">Drag</span> Pan • <span className="font-medium">Scroll</span> Zoom • <span className="font-medium">Click</span> Select • <span className="font-medium">Dbl-Click</span> Collapse
+      <div className="absolute bottom-4 right-4 z-10 text-xs text-muted-foreground bg-card/80 backdrop-blur-sm rounded-lg px-3 py-1.5 shadow">
+        <span className="font-medium">Drag</span> Pan • <span className="font-medium">Scroll</span> Zoom • <span className="font-medium">Click</span> Select
       </div>
 
       {/* Tooltip */}
       {tooltip && (
         <div 
-          className="absolute z-50 px-3 py-2 rounded-lg shadow-lg border text-sm pointer-events-none transform -translate-x-1/2"
+          className="absolute z-50 px-4 py-2.5 rounded-xl shadow-xl border pointer-events-none transform -translate-x-1/2"
           style={{ 
             left: tooltip.x, 
-            top: tooltip.y - 70,
-            backgroundColor: resolvedTheme === 'light' ? 'rgba(255,255,255,0.95)' : 'rgba(24,24,27,0.95)',
-            borderColor: resolvedTheme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
-            color: resolvedTheme === 'light' ? '#1a1a1a' : '#fafafa'
+            top: tooltip.y - 75,
+            backgroundColor: resolvedTheme === 'light' ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.98)',
+            borderColor: resolvedTheme === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)',
+            color: resolvedTheme === 'light' ? '#1e293b' : '#f1f5f9'
           }}
         >
-          <div className="font-medium">{tooltip.name}</div>
-          <div className="text-xs opacity-70 capitalize">{tooltip.type}</div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{nodeEmojis[tooltip.type] || '📦'}</span>
+            <div>
+              <div className="font-semibold">{tooltip.name}</div>
+              <div className="text-xs opacity-60 capitalize">{tooltip.type}</div>
+            </div>
+          </div>
           {tooltip.childCount !== undefined && tooltip.childCount > 0 && (
-            <div className="text-xs opacity-50 mt-1">{tooltip.childCount} children</div>
+            <div className="text-xs opacity-50 mt-1 pt-1 border-t border-current/10">
+              {tooltip.childCount} {tooltip.childCount === 1 ? 'child' : 'children'}
+            </div>
           )}
         </div>
       )}
