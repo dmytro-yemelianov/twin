@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useTheme } from "next-themes"
 import * as THREE from "three"
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import type { SceneConfig, DeviceType, Status4D, ColorMode } from "@/lib/types"
 import {
   buildScene,
@@ -78,110 +79,47 @@ function disposeObject(object: THREE.Object3D) {
   object.clear()
 }
 
-class SimpleOrbitControls {
-  camera: THREE.Camera
-  domElement: HTMLElement
-  target: THREE.Vector3
-  enableDamping: boolean
-  dampingFactor: number
-  enablePan: boolean
+// Extended OrbitControls with zoom helper methods
+interface ExtendedOrbitControls extends OrbitControls {
+  zoomIn: () => void
+  zoomOut: () => void
+}
 
-  private isMouseDown = false
-  private isRightMouseDown = false
-  private previousMousePosition = { x: 0, y: 0 }
-  private spherical = { radius: 20, theta: Math.PI / 4, phi: Math.PI / 3 }
-
-  constructor(camera: THREE.Camera, domElement: HTMLElement) {
-    this.camera = camera
-    this.domElement = domElement
-    this.target = new THREE.Vector3()
-    this.enableDamping = true
-    this.dampingFactor = 0.05
-    this.enablePan = true
-
-    this.domElement.addEventListener("mousedown", this.onMouseDown)
-    this.domElement.addEventListener("mousemove", this.onMouseMove)
-    this.domElement.addEventListener("mouseup", this.onMouseUp)
-    this.domElement.addEventListener("wheel", this.onWheel)
-    this.domElement.addEventListener("contextmenu", (e) => e.preventDefault())
+function createOrbitControls(camera: THREE.Camera, domElement: HTMLElement): ExtendedOrbitControls {
+  const controls = new OrbitControls(camera, domElement) as ExtendedOrbitControls
+  
+  // Configure for CAD-like behavior
+  controls.enableDamping = true
+  controls.dampingFactor = 0.05
+  controls.enablePan = true
+  controls.screenSpacePanning = true // Pan in screen space
+  controls.mouseButtons = {
+    LEFT: THREE.MOUSE.ROTATE,
+    MIDDLE: THREE.MOUSE.DOLLY,
+    RIGHT: THREE.MOUSE.PAN
   }
-
-  private onMouseDown = (event: MouseEvent) => {
-    if (event.button === 0) {
-      // Left mouse button - rotate
-      this.isMouseDown = true
-    } else if (event.button === 2) {
-      // Right mouse button - pan
-      this.isRightMouseDown = true
-    }
-    this.previousMousePosition = { x: event.clientX, y: event.clientY }
+  controls.minDistance = 2
+  controls.maxDistance = 200
+  controls.maxPolarAngle = Math.PI * 0.95 // Don't flip upside down
+  
+  // Add zoom helper methods
+  controls.zoomIn = function() {
+    const factor = 0.8
+    const distance = camera.position.distanceTo(this.target)
+    const newDistance = Math.max(this.minDistance, distance * factor)
+    const direction = new THREE.Vector3().subVectors(camera.position, this.target).normalize()
+    camera.position.copy(this.target).add(direction.multiplyScalar(newDistance))
   }
-
-  private onMouseMove = (event: MouseEvent) => {
-    const deltaX = event.clientX - this.previousMousePosition.x
-    const deltaY = event.clientY - this.previousMousePosition.y
-
-    if (this.isMouseDown) {
-      // Rotation
-      this.spherical.theta -= deltaX * 0.01
-      this.spherical.phi -= deltaY * 0.01
-      this.spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this.spherical.phi))
-    } else if (this.isRightMouseDown && this.enablePan) {
-      // Panning
-      const panSpeed = 0.02
-      const right = new THREE.Vector3()
-      const up = new THREE.Vector3()
-
-      this.camera.getWorldDirection(new THREE.Vector3())
-      right.crossVectors(this.camera.up, new THREE.Vector3(0, 0, 1)).normalize()
-      up.set(0, 1, 0)
-
-      this.target.add(right.multiplyScalar(-deltaX * panSpeed))
-      this.target.add(up.multiplyScalar(deltaY * panSpeed))
-    }
-
-    this.previousMousePosition = { x: event.clientX, y: event.clientY }
+  
+  controls.zoomOut = function() {
+    const factor = 1.25
+    const distance = camera.position.distanceTo(this.target)
+    const newDistance = Math.min(this.maxDistance, distance * factor)
+    const direction = new THREE.Vector3().subVectors(camera.position, this.target).normalize()
+    camera.position.copy(this.target).add(direction.multiplyScalar(newDistance))
   }
-
-  private onMouseUp = (event: MouseEvent) => {
-    if (event.button === 0) {
-      this.isMouseDown = false
-    } else if (event.button === 2) {
-      this.isRightMouseDown = false
-    }
-  }
-
-  private onWheel = (event: WheelEvent) => {
-    event.preventDefault()
-    this.spherical.radius += event.deltaY * 0.01
-    this.spherical.radius = Math.max(2, Math.min(100, this.spherical.radius))
-  }
-
-  zoomIn() {
-    this.spherical.radius *= 0.9
-    this.spherical.radius = Math.max(2, this.spherical.radius)
-  }
-
-  zoomOut() {
-    this.spherical.radius *= 1.1
-    this.spherical.radius = Math.min(100, this.spherical.radius)
-  }
-
-  update() {
-    const x = this.spherical.radius * Math.sin(this.spherical.phi) * Math.sin(this.spherical.theta)
-    const y = this.spherical.radius * Math.cos(this.spherical.phi)
-    const z = this.spherical.radius * Math.sin(this.spherical.phi) * Math.cos(this.spherical.theta)
-
-    this.camera.position.set(this.target.x + x, this.target.y + y, this.target.z + z)
-    this.camera.lookAt(this.target)
-  }
-
-  dispose() {
-    this.domElement.removeEventListener("mousedown", this.onMouseDown)
-    this.domElement.removeEventListener("mousemove", this.onMouseMove)
-    this.domElement.removeEventListener("mouseup", this.onMouseUp)
-    this.domElement.removeEventListener("wheel", this.onWheel)
-  }
+  
+  return controls
 }
 
 interface TooltipData {
@@ -245,7 +183,7 @@ export function ThreeScene({
   const sceneRef = useRef<THREE.Scene | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
-  const controlsRef = useRef<SimpleOrbitControls | null>(null)
+  const controlsRef = useRef<ExtendedOrbitControls | null>(null)
   const sceneObjectsRef = useRef<SceneObjects | null>(null)
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster())
   const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2())
@@ -284,9 +222,7 @@ export function ThreeScene({
     container.appendChild(renderer.domElement)
     rendererRef.current = renderer
 
-    const controls = new SimpleOrbitControls(camera, renderer.domElement)
-    controls.enableDamping = true
-    controls.dampingFactor = 0.05
+    const controls = createOrbitControls(camera, renderer.domElement)
     controlsRef.current = controls
 
     // Lighting
