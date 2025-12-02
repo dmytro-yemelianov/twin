@@ -710,8 +710,8 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
                 </div>
               )}
 
-              {/* Viewport Controls */}
-              <div className="absolute bottom-4 right-4 z-20">
+              {/* Viewport Controls - bottom-left to avoid ViewHelper overlap */}
+              <div className="absolute bottom-4 left-4 z-20">
                 <ViewportControls
                   onResetCamera={handleResetCamera}
                   onFitView={handleFitView}

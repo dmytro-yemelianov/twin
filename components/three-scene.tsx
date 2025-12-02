@@ -354,10 +354,9 @@ export function ThreeScene({
     scene.add(compass)
     compassRef.current = compass
 
-    // Create ViewHelper (CAD-style view cube) - positioned in top-right corner
-    // ViewHelper uses screen coordinates where Y increases downward
+    // Create ViewHelper (CAD-style view cube) - positioned in bottom-right corner
     const viewHelper = new ViewHelper(camera, renderer.domElement)
-    viewHelper.center.set(0.88, -0.88, 0) // Position in top-right (positive Y = down in ViewHelper)
+    viewHelper.center.set(0.85, 0.85, 0) // Position in bottom-right (NDC space)
     viewHelperRef.current = viewHelper
     
     // Handle ViewHelper click events - ViewHelper handles its own click detection
