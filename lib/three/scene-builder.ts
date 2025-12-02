@@ -323,12 +323,16 @@ function createRackGeometry(uHeight: number): THREE.Group {
   return group
 }
 
-function createDeviceGeometry(uHeight: number, category: string): THREE.Group {
+function createDeviceGeometry(uHeight: number, category: string, mounting?: string): THREE.Group {
   const group = new THREE.Group()
 
-  const width = 0.5
-  const depth = 0.9
-  const height = (uHeight / 42) * 2.0
+  // Handle vertical mount devices (like 0U PDUs)
+  const isVerticalMount = mounting === 'vertical'
+  
+  // Dimensions differ for vertical mount devices
+  const width = isVerticalMount ? 0.06 : 0.5  // Thin strip for vertical PDU
+  const depth = isVerticalMount ? 0.08 : 0.9
+  const height = isVerticalMount ? 2.0 : (uHeight / 42) * 2.0  // Full rack height for vertical
 
   // Lighter, more pastel colors for better visibility in both themes
   let baseColor = 0x7799cc
@@ -641,16 +645,25 @@ export async function buildScene(
     const deviceType = deviceTypes.get(device.deviceTypeId)
     if (!deviceType) continue
 
-    const deviceGroup = createDeviceGeometry(device.uHeight, deviceType.category)
+    // Check for vertical mounting (from device data or 0U height)
+    const mounting = (device as any).mounting || (device.uHeight === 0 ? 'vertical' : undefined)
+    const deviceGroup = createDeviceGeometry(device.uHeight, deviceType.category, mounting)
     deviceGroup.name = device.id
-    deviceGroup.userData = { type: "device", data: device }
+    deviceGroup.userData = { type: "device", data: device, mounting }
 
     // Position device within rack
     const rackGroup = objects.racks.get(device.rackId)
     if (rackGroup) {
       const rack = rackGroup.userData.data as Rack
-      const position = computeDevicePosition(device.uStart, device.uHeight, rack.uHeight)
-      deviceGroup.position.copy(position)
+      
+      if (mounting === 'vertical') {
+        // Vertical mount devices go on the side of the rack
+        // Position at the left side of the rack, spanning full height
+        deviceGroup.position.set(-0.35, 1.0, 0) // Left side, vertically centered
+      } else {
+        const position = computeDevicePosition(device.uStart, device.uHeight, rack.uHeight)
+        deviceGroup.position.copy(position)
+      }
       rackGroup.add(deviceGroup)
     }
 

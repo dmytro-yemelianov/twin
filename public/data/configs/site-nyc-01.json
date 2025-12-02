@@ -262,10 +262,11 @@
       "rackId": "rack-01",
       "deviceTypeId": "pdu-0u",
       "name": "PDU-A",
-      "uStart": 0,
-      "uHeight": 0,
+      "uStart": 1,
+      "uHeight": 42,
       "status4D": "EXISTING_RETAINED",
-      "powerKw": 0.1
+      "powerKw": 0.1,
+      "mounting": "vertical"
     },
     {
       "id": "dev-006",
