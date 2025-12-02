@@ -930,7 +930,7 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
             </div>
           )}
 
-          {currentTab === 'graph' && (
+          {currentTab === 'graph' && sceneConfig && (
             <div className="h-full">
               <HierarchyGraphDynamic
                 sceneConfig={sceneConfig}
