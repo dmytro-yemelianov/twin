@@ -5,8 +5,8 @@
  * This script migrates data from the static JSON files to the database.
  */
 
-import { neon } from '@neondatabase/serverless'
-import { drizzle } from 'drizzle-orm/neon-http'
+import { drizzle } from 'drizzle-orm/postgres-js'
+import postgres from 'postgres'
 import * as schema from './schema'
 import { eq } from 'drizzle-orm'
 
@@ -38,18 +38,20 @@ async function loadSceneConfig(uri: string) {
 async function seed() {
   if (!process.env.DATABASE_URL) {
     console.error('❌ DATABASE_URL environment variable is not set')
-    console.log('\nTo set up your database:')
-    console.log('1. Create an account at https://neon.tech (free)')
+    console.log('\nTo set up your database with Supabase:')
+    console.log('1. Create an account at https://supabase.com (free)')
     console.log('2. Create a new project')
-    console.log('3. Copy the connection string')
-    console.log('4. Create a .env.local file with: DATABASE_URL="your-connection-string"')
+    console.log('3. Go to Project Settings > Database')
+    console.log('4. Copy the "Connection string" (URI format)')
+    console.log('5. Create a .env.local file with: DATABASE_URL="your-connection-string"')
+    console.log('\nNote: Use the "Transaction" pooler connection string for best compatibility')
     process.exit(1)
   }
 
   console.log('🌱 Starting database seed...\n')
 
-  const sql = neon(process.env.DATABASE_URL)
-  const db = drizzle(sql, { schema })
+  const client = postgres(process.env.DATABASE_URL, { prepare: false })
+  const db = drizzle(client, { schema })
 
   try {
     // 1. Create regions from unique site regions
@@ -160,8 +162,12 @@ async function seed() {
     console.log(`  Total: ${sitesJson.sites.length} sites\n`)
 
     console.log('✅ Seed completed successfully!')
+    
+    // Close connection
+    await client.end()
   } catch (error) {
     console.error('❌ Seed failed:', error)
+    await client.end()
     process.exit(1)
   }
 }
@@ -180,13 +186,6 @@ async function migrateSceneConfig(
   // Migrate buildings
   if (config.buildings) {
     for (const building of config.buildings) {
-      const existing = await db
-        .select()
-        .from(schema.buildings)
-        .where(eq(schema.buildings.siteId, siteId))
-        .limit(1)
-
-      // Simple check - in production you'd want more robust deduplication
       const [newBuilding] = await db
         .insert(schema.buildings)
         .values({
@@ -303,4 +302,3 @@ async function migrateSceneConfig(
 
 // Run seed
 seed()
-
