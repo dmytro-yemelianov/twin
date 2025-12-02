@@ -289,18 +289,18 @@ export function HierarchyGraph({
             'color': colors.text,
             'text-outline-width': 2,
             'text-outline-color': colors.background,
-            'background-color': 'transparent',
-            'background-fit': 'contain',
-            'background-clip': 'none',
-            'border-width': 0,
-            'shape': 'rectangle',
+            'background-color': colors.device,
+            'border-width': 2,
+            'border-color': colors.device,
+            'shape': 'ellipse',
           }
         },
-        // Type-specific styles with icons
+        // Type-specific styles with colors
         {
           selector: 'node[type="site"]',
           style: {
-            'background-image': getIconUrl('site'),
+            'background-color': colors.site,
+            'border-color': colors.site,
             'width': nodeSizes.site,
             'height': nodeSizes.site,
             'font-size': 13,
@@ -310,7 +310,8 @@ export function HierarchyGraph({
         {
           selector: 'node[type="building"]',
           style: {
-            'background-image': getIconUrl('building'),
+            'background-color': colors.building,
+            'border-color': colors.building,
             'width': nodeSizes.building,
             'height': nodeSizes.building,
             'font-size': 11,
@@ -319,7 +320,8 @@ export function HierarchyGraph({
         {
           selector: 'node[type="floor"]',
           style: {
-            'background-image': getIconUrl('floor'),
+            'background-color': colors.floor,
+            'border-color': colors.floor,
             'width': nodeSizes.floor,
             'height': nodeSizes.floor,
             'font-size': 10,
@@ -328,7 +330,8 @@ export function HierarchyGraph({
         {
           selector: 'node[type="room"]',
           style: {
-            'background-image': getIconUrl('room'),
+            'background-color': colors.room,
+            'border-color': colors.room,
             'width': nodeSizes.room,
             'height': nodeSizes.room,
             'font-size': 10,
@@ -337,7 +340,8 @@ export function HierarchyGraph({
         {
           selector: 'node[type="rack"]',
           style: {
-            'background-image': getIconUrl('rack'),
+            'background-color': colors.rack,
+            'border-color': colors.rack,
             'width': nodeSizes.rack,
             'height': nodeSizes.rack,
             'font-size': 9,
@@ -346,7 +350,8 @@ export function HierarchyGraph({
         {
           selector: 'node[type="device"]',
           style: {
-            'background-image': getIconUrl('device'),
+            'background-color': colors.device,
+            'border-color': colors.device,
             'width': nodeSizes.device,
             'height': nodeSizes.device,
             'font-size': 8,
@@ -556,13 +561,14 @@ export function HierarchyGraph({
         containerRef.current.style.backgroundColor = colors.background
       }
 
-      // Update node icons
-      const types = ['site', 'building', 'floor', 'room', 'rack', 'device']
+      // Update node colors
+      const types = ['site', 'building', 'floor', 'room', 'rack', 'device'] as const
       types.forEach(type => {
+        const typeColor = colors[type]
         cy.nodes(`[type="${type}"]`).forEach(node => {
-          const isCollapsed = collapsedNodes.has(node.id())
           node.style({
-            'background-image': getIconUrl(type, isCollapsed),
+            'background-color': typeColor,
+            'border-color': typeColor,
             'color': colors.text,
             'text-outline-color': colors.background,
           })
