@@ -34,10 +34,16 @@ interface AppState {
   setColorMode: (mode: ColorMode) => void
 
   // Selection State
-  selectedDeviceId: string | null
+  selectedBuildingId: string | null
+  selectedFloorId: string | null
+  selectedRoomId: string | null
   selectedRackId: string | null
-  selectDevice: (deviceId: string | null) => void
+  selectedDeviceId: string | null
+  selectBuilding: (buildingId: string | null) => void
+  selectFloor: (floorId: string | null) => void
+  selectRoom: (roomId: string | null) => void
   selectRack: (rackId: string | null) => void
+  selectDevice: (deviceId: string | null) => void
 
   // AI Capacity
   aiCapacitySuggestion: AICapacitySuggestion | null
@@ -148,13 +154,39 @@ export const useAppStore = create<AppState>()(
           }),
 
         // Selection State
-        selectedDeviceId: null,
+        selectedBuildingId: null,
+        selectedFloorId: null,
+        selectedRoomId: null,
         selectedRackId: null,
-        selectDevice: (deviceId) =>
+        selectedDeviceId: null,
+        selectBuilding: (buildingId) =>
           set((state) => {
-            state.selectedDeviceId = deviceId
-            if (deviceId) {
+            state.selectedBuildingId = buildingId
+            // Clear child selections when building changes
+            if (buildingId !== state.selectedBuildingId) {
+              state.selectedFloorId = null
+              state.selectedRoomId = null
               state.selectedRackId = null
+              state.selectedDeviceId = null
+            }
+          }),
+        selectFloor: (floorId) =>
+          set((state) => {
+            state.selectedFloorId = floorId
+            // Clear child selections when floor changes
+            if (floorId !== state.selectedFloorId) {
+              state.selectedRoomId = null
+              state.selectedRackId = null
+              state.selectedDeviceId = null
+            }
+          }),
+        selectRoom: (roomId) =>
+          set((state) => {
+            state.selectedRoomId = roomId
+            // Clear child selections when room changes
+            if (roomId !== state.selectedRoomId) {
+              state.selectedRackId = null
+              state.selectedDeviceId = null
             }
           }),
         selectRack: (rackId) =>
@@ -162,6 +194,13 @@ export const useAppStore = create<AppState>()(
             state.selectedRackId = rackId
             if (rackId) {
               state.selectedDeviceId = null
+            }
+          }),
+        selectDevice: (deviceId) =>
+          set((state) => {
+            state.selectedDeviceId = deviceId
+            if (deviceId) {
+              state.selectedRackId = null
             }
           }),
 
@@ -234,8 +273,11 @@ export const useAppStore = create<AppState>()(
         // Reset Functions
         resetSelection: () =>
           set((state) => {
-            state.selectedDeviceId = null
+            state.selectedBuildingId = null
+            state.selectedFloorId = null
+            state.selectedRoomId = null
             state.selectedRackId = null
+            state.selectedDeviceId = null
             state.highlightedRacks = []
           }),
         resetViewState: () =>

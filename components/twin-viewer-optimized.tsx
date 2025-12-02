@@ -97,10 +97,16 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
     setColorMode,
     showBuilding,
     setShowBuilding,
-    selectedDeviceId,
-    selectDevice,
+    selectedBuildingId,
+    selectBuilding,
+    selectedFloorId,
+    selectFloor,
+    selectedRoomId,
+    selectRoom,
     selectedRackId,
     selectRack,
+    selectedDeviceId,
+    selectDevice,
     showInventory,
     setShowInventory,
     aiCapacitySuggestion,
@@ -341,9 +347,14 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
                 <>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   <Select 
-                    value={sceneConfig.buildings[0]?.id || ''} 
+                    value={selectedBuildingId || sceneConfig.buildings[0]?.id || ''} 
                     onValueChange={(id) => {
-                      // TODO: Handle building selection
+                      selectBuilding(id)
+                      // Clear downstream selections
+                      selectFloor(null)
+                      selectRoom(null)
+                      selectRack(null)
+                      selectDevice(null)
                     }}
                   >
                     <SelectTrigger className="h-7 w-auto gap-1 border-0 bg-transparent hover:bg-accent px-2">
@@ -356,59 +367,166 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
                           {b.name}
                         </SelectItem>
                       ))}
-              </SelectContent>
-            </Select>
+                    </SelectContent>
+                  </Select>
                 </>
               )}
 
-              {/* Room breadcrumb - show when a rack is selected */}
-              {selectedRackId && sceneConfig && (() => {
-                const rack = sceneConfig.racks.find(r => r.id === selectedRackId)
-                const room = sceneConfig.rooms.find(r => r.id === rack?.roomId)
-                if (!room) return null
+              {/* Floor breadcrumb - show when sceneConfig has floors */}
+              {sceneConfig?.floors && sceneConfig.floors.length > 0 && (() => {
+                const currentBuildingId = selectedBuildingId || sceneConfig.buildings?.[0]?.id
+                const floorsInBuilding = sceneConfig.floors.filter(f => f.buildingId === currentBuildingId)
+                if (floorsInBuilding.length === 0) return null
                 return (
                   <>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    <div className="flex items-center gap-1 px-2 h-7 text-xs">
-                      <DoorOpen className="w-3 h-3 text-muted-foreground" />
-                      <span>{room.name}</span>
-                    </div>
+                    <Select 
+                      value={selectedFloorId || floorsInBuilding[0]?.id || ''} 
+                      onValueChange={(id) => {
+                        selectFloor(id)
+                        // Clear downstream selections
+                        selectRoom(null)
+                        selectRack(null)
+                        selectDevice(null)
+                      }}
+                    >
+                      <SelectTrigger className="h-7 w-auto gap-1 border-0 bg-transparent hover:bg-accent px-2">
+                        <Layers className="w-3 h-3 text-muted-foreground" />
+                        <SelectValue placeholder="Floor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {floorsInBuilding.map((f) => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )
+              })()}
+
+              {/* Room breadcrumb - show when rooms exist */}
+              {sceneConfig?.rooms && sceneConfig.rooms.length > 0 && (() => {
+                // Filter rooms by selected floor if floors exist
+                const currentFloorId = selectedFloorId || sceneConfig.floors?.[0]?.id
+                const roomsInScope = sceneConfig.floors?.length 
+                  ? sceneConfig.rooms.filter(r => r.floorId === currentFloorId)
+                  : sceneConfig.rooms
+                if (roomsInScope.length === 0) return null
+                
+                // Get the effective room id (selected, or from rack, or from device)
+                let effectiveRoomId = selectedRoomId
+                if (!effectiveRoomId && selectedRackId) {
+                  const rack = sceneConfig.racks.find(r => r.id === selectedRackId)
+                  effectiveRoomId = rack?.roomId || null
+                }
+                if (!effectiveRoomId && selectedDeviceId) {
+                  const device = sceneConfig.devices.find(d => d.id === selectedDeviceId)
+                  const rack = sceneConfig.racks.find(r => r.id === device?.rackId)
+                  effectiveRoomId = rack?.roomId || null
+                }
+                
+                return (
+                  <>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    <div className="flex items-center gap-1 px-2 h-7 text-xs font-medium bg-primary/10 rounded">
-                      <Server className="w-3 h-3" />
-                      <span>{rack?.name}</span>
-                    </div>
+                    <Select 
+                      value={effectiveRoomId || roomsInScope[0]?.id || ''} 
+                      onValueChange={(id) => {
+                        selectRoom(id)
+                        // Clear downstream selections
+                        selectRack(null)
+                        selectDevice(null)
+                      }}
+                    >
+                      <SelectTrigger className="h-7 w-auto gap-1 border-0 bg-transparent hover:bg-accent px-2">
+                        <DoorOpen className="w-3 h-3 text-muted-foreground" />
+                        <SelectValue placeholder="Room" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roomsInScope.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>
+                            {r.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )
+              })()}
+
+              {/* Rack breadcrumb - show when a rack or device is selected */}
+              {(selectedRackId || selectedDeviceId) && sceneConfig && (() => {
+                let rackId = selectedRackId
+                if (!rackId && selectedDeviceId) {
+                  const device = sceneConfig.devices.find(d => d.id === selectedDeviceId)
+                  rackId = device?.rackId || null
+                }
+                if (!rackId) return null
+                
+                const rack = sceneConfig.racks.find(r => r.id === rackId)
+                if (!rack) return null
+                
+                // Get all racks in the current room for the dropdown
+                const racksInRoom = sceneConfig.racks.filter(r => r.roomId === rack.roomId)
+                
+                return (
+                  <>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    <Select 
+                      value={rackId} 
+                      onValueChange={(id) => {
+                        selectRack(id)
+                        selectDevice(null)
+                      }}
+                    >
+                      <SelectTrigger className={`h-7 w-auto gap-1 border-0 px-2 ${
+                        selectedRackId ? 'bg-primary/10 font-medium' : 'bg-transparent hover:bg-accent'
+                      }`}>
+                        <Server className="w-3 h-3" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {racksInRoom.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>
+                            {r.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </>
                 )
               })()}
 
               {/* Device breadcrumb - show when a device is selected */}
-              {selectedDeviceId && !selectedRackId && sceneConfig && (() => {
+              {selectedDeviceId && sceneConfig && (() => {
                 const device = sceneConfig.devices.find(d => d.id === selectedDeviceId)
-                const rack = sceneConfig.racks.find(r => r.id === device?.rackId)
-                const room = sceneConfig.rooms.find(r => r.id === rack?.roomId)
-                if (!device || !rack) return null
+                if (!device) return null
+                
+                // Get all devices in the current rack for the dropdown
+                const devicesInRack = sceneConfig.devices.filter(d => d.rackId === device.rackId)
+                
                 return (
                   <>
-                    {room && (
-                      <>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                        <div className="flex items-center gap-1 px-2 h-7 text-xs">
-                          <DoorOpen className="w-3 h-3 text-muted-foreground" />
-                          <span>{room.name}</span>
-                        </div>
-                      </>
-                    )}
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    <div className="flex items-center gap-1 px-2 h-7 text-xs">
-                      <Server className="w-3 h-3 text-muted-foreground" />
-                      <span>{rack.name}</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    <div className="flex items-center gap-1 px-2 h-7 text-xs font-medium bg-primary/10 rounded">
-                      <Cpu className="w-3 h-3" />
-                      <span className="max-w-[120px] truncate">{device.name}</span>
-                    </div>
+                    <Select 
+                      value={selectedDeviceId} 
+                      onValueChange={(id) => {
+                        selectDevice(id)
+                      }}
+                    >
+                      <SelectTrigger className="h-7 w-auto gap-1 border-0 bg-primary/10 px-2 font-medium">
+                        <Cpu className="w-3 h-3" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {devicesInRack.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            <span className="max-w-[180px] truncate">{d.name}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </>
                 )
               })()}
