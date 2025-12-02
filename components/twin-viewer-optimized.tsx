@@ -789,8 +789,6 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
             </div>
           )}
         </div>
-
-        </div>
         
         {/* Bottom Inventory Panel with Resize */}
         {showInventory && currentTab === '3d' && (
