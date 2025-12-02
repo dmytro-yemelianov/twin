@@ -95,12 +95,6 @@ export function HierarchyGraph({
 
   const colors = resolvedTheme === 'light' ? themeColors.light : themeColors.dark
 
-  // Guard for invalid sceneConfig
-  const hasValidConfig = sceneConfig && 
-    Array.isArray(sceneConfig.rooms) && 
-    Array.isArray(sceneConfig.racks) && 
-    Array.isArray(sceneConfig.devices)
-
   // Generate icon URLs
   const getIconUrl = useCallback((type: string, isCollapsed: boolean = false) => {
     const iconColor = '#ffffff'
@@ -118,7 +112,10 @@ export function HierarchyGraph({
     const childrenMap = new Map<string, string[]>()
     
     // Return empty if no valid config
-    if (!hasValidConfig) {
+    if (!sceneConfig || 
+        !Array.isArray(sceneConfig.rooms) || 
+        !Array.isArray(sceneConfig.racks) || 
+        !Array.isArray(sceneConfig.devices)) {
       return { nodes, edges, childrenMap }
     }
     
@@ -241,7 +238,7 @@ export function HierarchyGraph({
     })
 
     return { nodes, edges, childrenMap }
-  }, [sceneConfig, siteName, hasValidConfig])
+  }, [sceneConfig, siteName])
 
   // Get all descendants of a node
   const getDescendants = useCallback((nodeId: string, visited = new Set<string>()): string[] => {
@@ -273,7 +270,7 @@ export function HierarchyGraph({
 
   // Initialize Cytoscape
   useEffect(() => {
-    if (!containerRef.current || !hasValidConfig || graphData.nodes.length === 0) return
+    if (!containerRef.current || graphData.nodes.length === 0) return
 
     const cy = cytoscape({
       container: containerRef.current,
@@ -477,7 +474,7 @@ export function HierarchyGraph({
     return () => {
       cy.destroy()
     }
-  }, [graphData, colors, onNodeSelect, getIconUrl, toggleCollapse, hasValidConfig])
+  }, [graphData, colors, onNodeSelect, getIconUrl, toggleCollapse, sceneConfig?.siteId])
 
   // Handle collapse/expand visibility
   useEffect(() => {
@@ -635,7 +632,10 @@ export function HierarchyGraph({
   }, [graphData.nodes])
 
   // Show loading state if no valid config
-  if (!hasValidConfig) {
+  if (!sceneConfig || 
+      !Array.isArray(sceneConfig.rooms) || 
+      !Array.isArray(sceneConfig.racks) || 
+      !Array.isArray(sceneConfig.devices)) {
     return (
       <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: colors.background }}>
         <div className="text-muted-foreground text-sm">Loading hierarchy graph...</div>
