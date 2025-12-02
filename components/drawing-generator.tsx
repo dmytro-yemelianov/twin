@@ -538,7 +538,7 @@ export function DrawingGenerator({ sceneConfig, siteName = "Site", onClose }: Dr
           {Object.entries(equipmentColors).slice(0, 4).map(([cat, color], i) => (
             <g key={cat} transform={`translate(${i * 50}, 15)`}>
               <rect x="0" y="0" width="12" height="8" fill={color} rx="1" />
-              <text x="16" y="7" fill={colors.text} fontSize="7" textTransform="capitalize">{cat}</text>
+              <text x="16" y="7" fill={colors.text} fontSize="7">{cat.charAt(0).toUpperCase() + cat.slice(1)}</text>
             </g>
           ))}
         </g>
