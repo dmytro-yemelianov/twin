@@ -123,6 +123,44 @@ function createULabel(uNumber: number, isLightTheme = false): THREE.Sprite {
   return sprite
 }
 
+// Create front/back indicator label
+function createFrontBackLabel(text: 'FRONT' | 'BACK'): THREE.Sprite {
+  if (typeof document === 'undefined') {
+    return new THREE.Sprite(new THREE.SpriteMaterial())
+  }
+  
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')!
+  
+  canvas.width = 128
+  canvas.height = 32
+  
+  // Transparent background with subtle tint
+  context.clearRect(0, 0, canvas.width, canvas.height)
+  
+  // Draw text
+  context.font = 'bold 16px monospace'
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.fillStyle = text === 'FRONT' ? '#4ade80' : '#f87171' // Green for front, red for back
+  context.fillText(text, canvas.width / 2, canvas.height / 2)
+  
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.needsUpdate = true
+  
+  const spriteMaterial = new THREE.SpriteMaterial({ 
+    map: texture,
+    transparent: true,
+    depthTest: false,
+  })
+  
+  const sprite = new THREE.Sprite(spriteMaterial)
+  sprite.scale.set(0.4, 0.1, 1)
+  sprite.userData.type = 'front-back-label'
+  
+  return sprite
+}
+
 function createRackGeometry(uHeight: number): THREE.Group {
   const group = new THREE.Group()
 
@@ -195,12 +233,12 @@ function createRackGeometry(uHeight: number): THREE.Group {
   topRightRail.position.set(width / 2 - railSize / 2, topY, 0)
   group.add(topRightRail)
 
-  // Add U-position labels on the left side
-  // Show labels at key positions: 1, then every 5U, and the top
+  // Add U-position labels on both front and back sides
+  // Show labels at key positions: 1, then every 10U, and the top
   const uToMeters = height / uHeight
   const labelPositions: number[] = [1]
   
-  for (let u = 5; u <= uHeight; u += 5) {
+  for (let u = 10; u <= uHeight; u += 10) {
     if (!labelPositions.includes(u)) {
       labelPositions.push(u)
     }
@@ -209,13 +247,59 @@ function createRackGeometry(uHeight: number): THREE.Group {
     labelPositions.push(uHeight)
   }
 
+  // Front labels (left side)
   labelPositions.forEach((uPos) => {
     const label = createULabel(uPos)
-    const yPosition = (uPos - 0.5) * uToMeters // Center of the U position
+    const yPosition = (uPos - 0.5) * uToMeters
     label.position.set(-width / 2 - 0.15, yPosition, -depth / 2)
     label.userData.uPosition = uPos
+    label.userData.labelSide = 'front'
     group.add(label)
   })
+
+  // Back labels (right side when looking from back)
+  labelPositions.forEach((uPos) => {
+    const label = createULabel(uPos)
+    const yPosition = (uPos - 0.5) * uToMeters
+    label.position.set(width / 2 + 0.15, yPosition, depth / 2)
+    label.userData.uPosition = uPos
+    label.userData.labelSide = 'back'
+    group.add(label)
+  })
+
+  // Add FRONT/BACK indicators at the bottom
+  const frontLabel = createFrontBackLabel('FRONT')
+  frontLabel.position.set(0, -0.15, -depth / 2 - 0.1)
+  frontLabel.userData.labelSide = 'front'
+  group.add(frontLabel)
+
+  const backLabel = createFrontBackLabel('BACK')
+  backLabel.position.set(0, -0.15, depth / 2 + 0.1)
+  backLabel.userData.labelSide = 'back'
+  group.add(backLabel)
+
+  // Add colored strips on posts to indicate front (green) and back (red)
+  const frontStripGeometry = new THREE.BoxGeometry(postSize + 0.01, 0.05, postSize + 0.01)
+  const frontStripMaterial = new THREE.MeshBasicMaterial({ color: 0x4ade80, transparent: true, opacity: 0.8 })
+  const backStripMaterial = new THREE.MeshBasicMaterial({ color: 0xf87171, transparent: true, opacity: 0.8 })
+
+  // Front strips (bottom of front posts)
+  const frontLeftStrip = new THREE.Mesh(frontStripGeometry, frontStripMaterial)
+  frontLeftStrip.position.set(-width / 2 + postSize / 2, 0.025, -depth / 2 + postSize / 2)
+  group.add(frontLeftStrip)
+
+  const frontRightStrip = new THREE.Mesh(frontStripGeometry, frontStripMaterial)
+  frontRightStrip.position.set(width / 2 - postSize / 2, 0.025, -depth / 2 + postSize / 2)
+  group.add(frontRightStrip)
+
+  // Back strips (bottom of back posts)
+  const backLeftStrip = new THREE.Mesh(frontStripGeometry, backStripMaterial)
+  backLeftStrip.position.set(-width / 2 + postSize / 2, 0.025, depth / 2 - postSize / 2)
+  group.add(backLeftStrip)
+
+  const backRightStrip = new THREE.Mesh(frontStripGeometry, backStripMaterial)
+  backRightStrip.position.set(width / 2 - postSize / 2, 0.025, depth / 2 - postSize / 2)
+  group.add(backRightStrip)
 
   // Add thin mounting rail indicators on the front posts (visual guide for U positions)
   const railIndicatorMaterial = new THREE.LineBasicMaterial({ 
@@ -246,117 +330,100 @@ function createDeviceGeometry(uHeight: number, category: string): THREE.Group {
   const depth = 0.9
   const height = (uHeight / 42) * 2.0
 
-  // Base color and material based on category
-  let baseColor = 0x4444ff
-  let emissiveColor = 0x0000ff
+  // Lighter, more pastel colors for better visibility in both themes
+  let baseColor = 0x7799cc
+  let accentColor = 0x5577aa
 
   switch (category) {
     case "GPU_SERVER":
-      baseColor = 0xff6b35 // Orange for high-power GPU servers
-      emissiveColor = 0xff4400
+      baseColor = 0xffab91 // Light coral/orange for GPU servers
+      accentColor = 0xff8a65
       break
     case "SERVER":
-      baseColor = 0x2196f3 // Blue for standard servers
-      emissiveColor = 0x0066cc
+      baseColor = 0x90caf9 // Light blue for standard servers
+      accentColor = 0x64b5f6
       break
     case "BLADE":
-      baseColor = 0x9c27b0 // Purple for blade systems
-      emissiveColor = 0x7b1fa2
+      baseColor = 0xce93d8 // Light purple for blade systems
+      accentColor = 0xba68c8
       break
     case "SWITCH":
-      baseColor = 0x4caf50 // Green for network equipment
-      emissiveColor = 0x2e7d32
+      baseColor = 0xa5d6a7 // Light green for network equipment
+      accentColor = 0x81c784
       break
     case "STORAGE":
-      baseColor = 0xffc107 // Amber for storage
-      emissiveColor = 0xff8f00
+      baseColor = 0xffe082 // Light amber for storage
+      accentColor = 0xffd54f
       break
     case "PDU":
-      baseColor = 0x607d8b // Gray for power distribution
-      emissiveColor = 0x455a64
+      baseColor = 0xb0bec5 // Light blue-gray for power distribution
+      accentColor = 0x90a4ae
       break
     case "UPS":
-      baseColor = 0xff5722 // Deep orange for UPS
-      emissiveColor = 0xe64a19
+      baseColor = 0xffab91 // Light deep orange for UPS
+      accentColor = 0xff8a65
       break
     case "NETWORK":
-      baseColor = 0x00bcd4 // Cyan for patch panels
-      emissiveColor = 0x0097a7
+      baseColor = 0x80deea // Light cyan for patch panels
+      accentColor = 0x4dd0e1
       break
   }
 
-  // Main chassis body
+  // Main chassis body - lighter colors
   const geometry = new THREE.BoxGeometry(width, height, depth)
   const material = new THREE.MeshStandardMaterial({
     color: baseColor,
+    metalness: 0.3,
+    roughness: 0.6,
+  })
+  material.userData = { isMainChassis: true, originalColor: baseColor }
+  const chassis = new THREE.Mesh(geometry, material)
+  chassis.userData.isMainMesh = true
+  group.add(chassis)
+
+  // Front panel with subtle bezel
+  const frontPanelGeometry = new THREE.BoxGeometry(width + 0.02, height, 0.03)
+  const frontPanelMaterial = new THREE.MeshStandardMaterial({
+    color: 0x3a3a3a,
     metalness: 0.7,
     roughness: 0.3,
   })
-  const chassis = new THREE.Mesh(geometry, material)
-  group.add(chassis)
-
-  // Front panel with darker bezel
-  const frontPanelGeometry = new THREE.BoxGeometry(width + 0.02, height, 0.05)
-  const frontPanelMaterial = new THREE.MeshStandardMaterial({
-    color: 0x1a1a1a,
-    metalness: 0.9,
-    roughness: 0.2,
-  })
   const frontPanel = new THREE.Mesh(frontPanelGeometry, frontPanelMaterial)
-  frontPanel.position.z = depth / 2 + 0.025
+  frontPanel.position.z = depth / 2 + 0.015
   group.add(frontPanel)
 
   // Add LED indicators on front panel
   const ledCount = Math.max(2, Math.floor(uHeight / 2))
-  const ledGeometry = new THREE.SphereGeometry(0.01, 8, 8)
+  const ledGeometry = new THREE.SphereGeometry(0.008, 8, 8)
 
-  for (let i = 0; i < ledCount; i++) {
+  for (let i = 0; i < Math.min(ledCount, 4); i++) {
     const ledMaterial = new THREE.MeshStandardMaterial({
-      color: emissiveColor,
-      emissive: emissiveColor,
-      emissiveIntensity: 0.8,
+      color: accentColor,
+      emissive: accentColor,
+      emissiveIntensity: 0.5,
       metalness: 0.1,
       roughness: 0.1,
     })
     const led = new THREE.Mesh(ledGeometry, ledMaterial)
     led.position.set(
       -width * 0.3 + (i % 2) * width * 0.6,
-      height * 0.3 - Math.floor(i / 2) * (height * 0.15),
-      depth / 2 + 0.06,
+      height * 0.3 - Math.floor(i / 2) * (height * 0.2),
+      depth / 2 + 0.04,
     )
     group.add(led)
   }
 
-  // Add ventilation holes for GPU/high-power equipment
-  if (category === "GPU_SERVER" || uHeight >= 4) {
-    const ventGeometry = new THREE.PlaneGeometry(width * 0.6, height * 0.3)
-    const ventMaterial = new THREE.MeshStandardMaterial({
-      color: 0x0a0a0a,
-      metalness: 0.3,
-      roughness: 0.8,
-    })
-    const vents = new THREE.Mesh(ventGeometry, ventMaterial)
-    vents.position.set(0, 0, depth / 2 + 0.055)
-    group.add(vents)
-  }
-
-  // Add cooling fins/grills on top for larger devices
-  if (uHeight >= 4) {
-    const grillGeometry = new THREE.BoxGeometry(width * 0.8, 0.01, depth * 0.8)
-    const grillMaterial = new THREE.MeshStandardMaterial({
-      color: 0x333333,
-      metalness: 0.8,
-      roughness: 0.4,
-    })
-    const grill = new THREE.Mesh(grillGeometry, grillMaterial)
-    grill.position.y = height / 2
-    group.add(grill)
-  }
-
-  // Add edges for definition
+  // Add edges for definition - these will be used for highlighting
   const edges = new THREE.EdgesGeometry(geometry)
-  const edgesMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 })
+  const edgesMaterial = new THREE.LineBasicMaterial({ 
+    color: 0x333333, 
+    linewidth: 1,
+    transparent: true,
+    opacity: 0.5
+  })
+  edgesMaterial.userData = { isOutline: true, originalColor: 0x333333, originalOpacity: 0.5 }
   const wireframe = new THREE.LineSegments(edges, edgesMaterial)
+  wireframe.userData.isOutline = true
   group.add(wireframe)
 
   return group
@@ -988,7 +1055,7 @@ export function getRelatedDeviceIds(
     .map(d => d.id)
 }
 
-// Highlight related devices (same logicalEquipmentId)
+// Highlight related devices using edge highlighting (not surface color)
 export function highlightRelatedDevices(
   sceneObjects: SceneObjects,
   relatedDeviceIds: string[],
@@ -999,20 +1066,54 @@ export function highlightRelatedDevices(
     const isSelected = deviceId === selectedDeviceId
 
     deviceGroup.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        const materials = Array.isArray(child.material) ? child.material : [child.material]
-        materials.forEach((mat) => {
-          if (isSelected) {
-            mat.emissive.setHex(0xffff00) // Yellow for selected
-            mat.emissiveIntensity = 0.5
-          } else if (isRelated) {
-            mat.emissive.setHex(0x00ffff) // Cyan for related
-            mat.emissiveIntensity = 0.4
-          } else {
-            mat.emissive.setHex(0x000000)
-            mat.emissiveIntensity = 0
-          }
-        })
+      // Handle outline/edge highlighting
+      if (child instanceof THREE.LineSegments && child.userData.isOutline) {
+        const mat = child.material as THREE.LineBasicMaterial
+        if (isSelected) {
+          mat.color.setHex(0xffdd00) // Bright yellow for selected
+          mat.opacity = 1
+          mat.linewidth = 3
+        } else if (isRelated) {
+          mat.color.setHex(0x00ffff) // Cyan for related
+          mat.opacity = 0.9
+          mat.linewidth = 2
+        } else {
+          // Restore original
+          const origColor = mat.userData?.originalColor ?? 0x333333
+          const origOpacity = mat.userData?.originalOpacity ?? 0.5
+          mat.color.setHex(origColor)
+          mat.opacity = origOpacity
+          mat.linewidth = 1
+        }
+      }
+      
+      // Subtle glow on mesh for selected only (not color change)
+      if (child instanceof THREE.Mesh && child.userData.isMainMesh) {
+        const mat = child.material as THREE.MeshStandardMaterial
+        if (isSelected) {
+          mat.emissive.setHex(0xffdd00)
+          mat.emissiveIntensity = 0.15 // Subtle glow
+        } else if (isRelated) {
+          mat.emissive.setHex(0x00ffff)
+          mat.emissiveIntensity = 0.1
+        } else {
+          mat.emissive.setHex(0x000000)
+          mat.emissiveIntensity = 0
+        }
+      }
+    })
+  })
+}
+
+// Update label visibility for racks
+export function updateRackLabelVisibility(sceneObjects: SceneObjects, visible: boolean) {
+  sceneObjects.racks.forEach((rackGroup) => {
+    rackGroup.traverse((child) => {
+      if (child instanceof THREE.Sprite) {
+        const labelType = child.userData.type
+        if (labelType === 'u-label' || labelType === 'front-back-label' || labelType === 'rack-label') {
+          child.visible = visible
+        }
       }
     })
   })

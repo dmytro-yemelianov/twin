@@ -6,7 +6,7 @@ import { useAppStore } from "@/lib/stores/app-store"
 import { useSceneConfig, useDeviceTypes } from "@/lib/hooks/use-data"
 import { findAIReadyCapacity } from "@/lib/ai-capacity"
 import { useDebouncedCallback } from "@/lib/hooks/use-debounce"
-import { Eye, EyeOff, Menu, Package, Layout, Calendar, BarChart3, Edit3, GitBranch, Check, Minus, Plus, Clock, Sparkles, Cpu, History, Target, Rocket, ChevronRight, MapPin, Building2, Globe, Layers, DoorOpen, Server } from "lucide-react"
+import { Eye, EyeOff, Menu, Package, Layout, Calendar, BarChart3, Edit3, GitBranch, Check, Minus, Plus, Clock, Sparkles, Cpu, History, Target, Rocket, ChevronRight, MapPin, Building2, Globe, Layers, DoorOpen, Server, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -121,6 +121,7 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
   const [showOrigin, setShowOrigin] = useState(false)
   const [showCompass, setShowCompass] = useState(true)
   const [show4DLines, setShow4DLines] = useState(false)
+  const [showLabels, setShowLabels] = useState(true) // Show rack labels by default
   const [showAIAnalysis, setShowAIAnalysis] = useState(false) // AI capacity analysis - disabled by default
   const [showEquipmentEditor, setShowEquipmentEditor] = useState(false)
   const [triggerResetCamera, setTriggerResetCamera] = useState(0)
@@ -576,6 +577,24 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
+                  onClick={() => setShowLabels(!showLabels)}
+                  className={`w-8 h-7 rounded-md transition-all flex items-center justify-center ${
+                    showLabels
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  }`}
+                >
+                  <Tag className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Labels</p>
+                <p className="text-xs text-muted-foreground">Show rack and U-position labels</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
                   onClick={() => setShow4DLines(!show4DLines)}
                   className={`w-8 h-7 rounded-md transition-all flex items-center justify-center ${
                     show4DLines
@@ -651,6 +670,7 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
                 showOrigin={showOrigin}
                 showCompass={showCompass}
                 show4DLines={show4DLines}
+                showLabels={showLabels}
                 onCameraView={setCurrentView}
                 triggerResetCamera={triggerResetCamera}
                 triggerFitView={triggerFitView}

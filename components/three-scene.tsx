@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTheme } from "next-themes"
 import * as THREE from "three"
 import type { SceneConfig, DeviceType, Status4D, ColorMode } from "@/lib/types"
@@ -22,6 +22,7 @@ import {
   highlight4DLines,
   getRelatedDeviceIds,
   highlightRelatedDevices,
+  updateRackLabelVisibility,
 } from "@/lib/three/scene-builder"
 import { status4DColors } from "@/lib/types"
 
@@ -183,6 +184,15 @@ class SimpleOrbitControls {
   }
 }
 
+interface TooltipData {
+  type: 'device' | 'rack'
+  id: string
+  name: string
+  details?: string
+  x: number
+  y: number
+}
+
 interface ThreeSceneProps {
   sceneConfig: SceneConfig
   deviceTypes: DeviceType[]
@@ -198,6 +208,7 @@ interface ThreeSceneProps {
   showOrigin?: boolean
   showCompass?: boolean
   show4DLines?: boolean
+  showLabels?: boolean
   onCameraView?: (view: string) => void
   triggerResetCamera?: number
   triggerFitView?: number
@@ -219,6 +230,7 @@ export function ThreeScene({
   showOrigin = false,
   showCompass = true,
   show4DLines = false,
+  showLabels = true,
   onCameraView,
   triggerResetCamera,
   triggerFitView,
@@ -242,6 +254,8 @@ export function ThreeScene({
   const compassRef = useRef<THREE.Group | null>(null)
   const connectionLinesRef = useRef<THREE.Group | null>(null)
   const gridHelperRef = useRef<THREE.GridHelper | null>(null)
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null)
+  const hoveredObjectRef = useRef<THREE.Object3D | null>(null)
 
   // Initialize Three.js scene
   useEffect(() => {
@@ -422,7 +436,22 @@ export function ThreeScene({
     const handleWindowResize = () => handleResize()
     window.addEventListener("resize", handleWindowResize)
 
-    // Handle click
+    // Helper to find clickable object from intersection
+    const findClickableObject = (object: THREE.Object3D): { type: 'device' | 'rack' | null, object: THREE.Object3D | null } => {
+      let current: THREE.Object3D | null = object
+      while (current) {
+        if (current.userData.type === 'device') {
+          return { type: 'device', object: current }
+        }
+        if (current.userData.type === 'rack') {
+          return { type: 'rack', object: current }
+        }
+        current = current.parent
+      }
+      return { type: null, object: null }
+    }
+
+    // Handle click - improved raycasting
     const handleClick = (event: MouseEvent) => {
       if (!container || !camera || !scene) return
 
@@ -431,42 +460,43 @@ export function ThreeScene({
       mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
 
       raycasterRef.current.setFromCamera(mouseRef.current, camera)
-      const intersects = raycasterRef.current.intersectObjects(scene.children, true)
+      
+      // Only raycast against meshes (not lines, sprites, etc.) for more accurate selection
+      const meshes: THREE.Object3D[] = []
+      scene.traverse((obj) => {
+        if (obj instanceof THREE.Mesh && obj.visible) {
+          meshes.push(obj)
+        }
+      })
+      
+      const intersects = raycasterRef.current.intersectObjects(meshes, false)
 
       if (intersects.length > 0) {
-        // Check ALL intersections and prioritize devices over racks
+        // Find the closest device or rack
         let foundDevice: THREE.Object3D | null = null
         let foundRack: THREE.Object3D | null = null
 
         for (const intersection of intersects) {
-          let object = intersection.object
-          // Traverse up to find the typed parent
-        while (object.parent && !object.userData.type) {
-          object = object.parent
-        }
-
-          if (object.userData.type === "device" && !foundDevice) {
-            foundDevice = object
-            break // Devices take priority, stop searching
-          } else if (object.userData.type === "rack" && !foundRack) {
-            foundRack = object
-            // Don't break - keep looking for devices
+          const result = findClickableObject(intersection.object)
+          
+          if (result.type === 'device' && !foundDevice) {
+            foundDevice = result.object
+            break // Devices take priority
+          } else if (result.type === 'rack' && !foundRack) {
+            foundRack = result.object
           }
         }
 
-        // Prioritize device selection over rack selection
         if (foundDevice) {
           onDeviceSelect(foundDevice.name)
           onRackSelect?.(null)
           return
         }
 
-        // Only select rack if no device was found (clicking on empty rack space)
         if (foundRack) {
           onRackSelect?.(foundRack.name)
           onDeviceSelect(null)
 
-          // Focus camera on rack
           if (sceneObjectsRef.current && cameraRef.current && controlsRef.current) {
             const rackGroup = sceneObjectsRef.current.racks.get(foundRack.name)
             if (rackGroup) {
@@ -482,11 +512,88 @@ export function ThreeScene({
     }
     container.addEventListener("click", handleClick)
 
+    // Handle mouse move for tooltips
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!container || !camera || !scene || !sceneObjectsRef.current) return
+
+      const rect = container.getBoundingClientRect()
+      mouseRef.current.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+      mouseRef.current.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+      raycasterRef.current.setFromCamera(mouseRef.current, camera)
+      
+      const meshes: THREE.Object3D[] = []
+      scene.traverse((obj) => {
+        if (obj instanceof THREE.Mesh && obj.visible) {
+          meshes.push(obj)
+        }
+      })
+      
+      const intersects = raycasterRef.current.intersectObjects(meshes, false)
+
+      if (intersects.length > 0) {
+        for (const intersection of intersects) {
+          const result = findClickableObject(intersection.object)
+          
+          if (result.type === 'device' && result.object) {
+            const deviceData = result.object.userData.data
+            if (deviceData && hoveredObjectRef.current !== result.object) {
+              hoveredObjectRef.current = result.object
+              setTooltip({
+                type: 'device',
+                id: deviceData.id,
+                name: deviceData.name,
+                details: `U${deviceData.uStart}-${deviceData.uStart + deviceData.uHeight - 1} • ${deviceData.status4D.replace('_', ' ')}`,
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+              })
+            } else if (hoveredObjectRef.current === result.object) {
+              // Update position only
+              setTooltip(prev => prev ? { ...prev, x: event.clientX - rect.left, y: event.clientY - rect.top } : null)
+            }
+            return
+          } else if (result.type === 'rack' && result.object) {
+            const rackData = result.object.userData.data
+            if (rackData && hoveredObjectRef.current !== result.object) {
+              hoveredObjectRef.current = result.object
+              setTooltip({
+                type: 'rack',
+                id: rackData.id,
+                name: rackData.name,
+                details: `${rackData.uHeight}U • ${rackData.powerCapacityKw}kW`,
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top
+              })
+            } else if (hoveredObjectRef.current === result.object) {
+              setTooltip(prev => prev ? { ...prev, x: event.clientX - rect.left, y: event.clientY - rect.top } : null)
+            }
+            return
+          }
+        }
+      }
+
+      // No intersection - clear tooltip
+      if (hoveredObjectRef.current) {
+        hoveredObjectRef.current = null
+        setTooltip(null)
+      }
+    }
+    container.addEventListener("mousemove", handleMouseMove)
+
+    // Handle mouse leave
+    const handleMouseLeave = () => {
+      hoveredObjectRef.current = null
+      setTooltip(null)
+    }
+    container.addEventListener("mouseleave", handleMouseLeave)
+
     return () => {
       cancelAnimationFrame(animationId)
       resizeObserver.disconnect()
       window.removeEventListener("resize", handleWindowResize)
       container.removeEventListener("click", handleClick)
+      container.removeEventListener("mousemove", handleMouseMove)
+      container.removeEventListener("mouseleave", handleMouseLeave)
       controls.dispose()
       renderer.dispose()
       container.removeChild(renderer.domElement)
@@ -772,5 +879,38 @@ export function ThreeScene({
     }
   }, [resolvedTheme])
 
-  return <div ref={containerRef} className="w-full h-full" />
+  // Update label visibility
+  useEffect(() => {
+    if (!sceneObjectsRef.current) return
+    updateRackLabelVisibility(sceneObjectsRef.current, showLabels)
+  }, [showLabels])
+
+  return (
+    <div ref={containerRef} className="w-full h-full relative">
+      {/* Tooltip overlay */}
+      {tooltip && (
+        <div 
+          className="absolute pointer-events-none z-50 px-3 py-2 rounded-lg shadow-lg border text-sm max-w-xs"
+          style={{ 
+            left: tooltip.x + 12, 
+            top: tooltip.y + 12,
+            backgroundColor: resolvedTheme === 'light' ? 'rgba(255,255,255,0.95)' : 'rgba(24,24,27,0.95)',
+            borderColor: resolvedTheme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
+            color: resolvedTheme === 'light' ? '#1a1a1a' : '#fafafa'
+          }}
+        >
+          <div className="font-medium flex items-center gap-2">
+            <span 
+              className="w-2 h-2 rounded-full" 
+              style={{ backgroundColor: tooltip.type === 'device' ? '#3b82f6' : '#22c55e' }}
+            />
+            {tooltip.name}
+          </div>
+          {tooltip.details && (
+            <div className="text-xs opacity-70 mt-0.5">{tooltip.details}</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
