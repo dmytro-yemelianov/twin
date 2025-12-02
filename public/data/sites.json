@@ -12,6 +12,28 @@
       "sceneConfigUri": "/data/configs/site-nyc-01.json"
     },
     {
+      "id": "site-nyc-02",
+      "name": "NYC-02",
+      "region": "US-East",
+      "lat": 40.758,
+      "lon": -73.9855,
+      "rackCount": 12,
+      "aiReadyRacks": 4,
+      "status": "AI_READY",
+      "sceneConfigUri": "/data/configs/site-nyc-01.json"
+    },
+    {
+      "id": "site-bos-01",
+      "name": "BOS-01",
+      "region": "US-East",
+      "lat": 42.3601,
+      "lon": -71.0589,
+      "rackCount": 8,
+      "aiReadyRacks": 0,
+      "status": "LEGACY",
+      "sceneConfigUri": "/data/configs/site-nyc-01.json"
+    },
+    {
       "id": "site-sf-01",
       "name": "SF-01",
       "region": "US-West",
@@ -21,6 +43,28 @@
       "aiReadyRacks": 8,
       "status": "AI_READY",
       "sceneConfigUri": "/data/configs/site-sf-01.json"
+    },
+    {
+      "id": "site-la-01",
+      "name": "LA-01",
+      "region": "US-West",
+      "lat": 34.0522,
+      "lon": -118.2437,
+      "rackCount": 16,
+      "aiReadyRacks": 6,
+      "status": "AI_READY",
+      "sceneConfigUri": "/data/configs/site-nyc-01.json"
+    },
+    {
+      "id": "site-sea-01",
+      "name": "SEA-01",
+      "region": "US-West",
+      "lat": 47.6062,
+      "lon": -122.3321,
+      "rackCount": 20,
+      "aiReadyRacks": 10,
+      "status": "AI_READY",
+      "sceneConfigUri": "/data/configs/site-nyc-01.json"
     },
     {
       "id": "site-chi-01",
@@ -34,6 +78,17 @@
       "sceneConfigUri": "/data/configs/site-chi-01.json"
     },
     {
+      "id": "site-dal-01",
+      "name": "DAL-01",
+      "region": "US-Central",
+      "lat": 32.7767,
+      "lon": -96.797,
+      "rackCount": 14,
+      "aiReadyRacks": 2,
+      "status": "IN_PROGRESS",
+      "sceneConfigUri": "/data/configs/site-nyc-01.json"
+    },
+    {
       "id": "site-mia-01",
       "name": "MIA-01",
       "region": "US-Southeast",
@@ -43,6 +98,72 @@
       "aiReadyRacks": 2,
       "status": "LEGACY",
       "sceneConfigUri": "/data/configs/site-mia-01.json"
+    },
+    {
+      "id": "site-atl-01",
+      "name": "ATL-01",
+      "region": "US-Southeast",
+      "lat": 33.749,
+      "lon": -84.388,
+      "rackCount": 22,
+      "aiReadyRacks": 8,
+      "status": "AI_READY",
+      "sceneConfigUri": "/data/configs/site-nyc-01.json"
+    },
+    {
+      "id": "site-lon-01",
+      "name": "LON-01",
+      "region": "EU-West",
+      "lat": 51.5074,
+      "lon": -0.1278,
+      "rackCount": 30,
+      "aiReadyRacks": 12,
+      "status": "AI_READY",
+      "sceneConfigUri": "/data/configs/site-nyc-01.json"
+    },
+    {
+      "id": "site-ams-01",
+      "name": "AMS-01",
+      "region": "EU-West",
+      "lat": 52.3676,
+      "lon": 4.9041,
+      "rackCount": 18,
+      "aiReadyRacks": 6,
+      "status": "AI_READY",
+      "sceneConfigUri": "/data/configs/site-nyc-01.json"
+    },
+    {
+      "id": "site-fra-01",
+      "name": "FRA-01",
+      "region": "EU-Central",
+      "lat": 50.1109,
+      "lon": 8.6821,
+      "rackCount": 26,
+      "aiReadyRacks": 10,
+      "status": "AI_READY",
+      "sceneConfigUri": "/data/configs/site-nyc-01.json"
+    },
+    {
+      "id": "site-tky-01",
+      "name": "TKY-01",
+      "region": "APAC",
+      "lat": 35.6762,
+      "lon": 139.6503,
+      "rackCount": 32,
+      "aiReadyRacks": 14,
+      "status": "AI_READY",
+      "sceneConfigUri": "/data/configs/site-nyc-01.json"
+    },
+    {
+      "id": "site-sgp-01",
+      "name": "SGP-01",
+      "region": "APAC",
+      "lat": 1.3521,
+      "lon": 103.8198,
+      "rackCount": 20,
+      "aiReadyRacks": 8,
+      "status": "AI_READY",
+      "sceneConfigUri": "/data/configs/site-nyc-01.json"
     }
   ]
 }

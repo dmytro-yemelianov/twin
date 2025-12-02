@@ -1,12 +1,17 @@
 import { generateId, readJSON, removeKey, writeJSON } from "./storage"
-import type { Status4D } from "./types"
+import type { Status4D, Phase } from "./types"
+
+type ModificationType = "move" | "add" | "remove" | "edit"
 
 export interface EquipmentModification {
   id: string
   timestamp: string
-  type: "move" | "add" | "remove" | "edit"
+  type: ModificationType
   deviceId: string
   deviceName: string
+  targetPhase?: Phase
+  scheduledDate?: string
+  isApplied?: boolean
   from?: {
     rackId: string
     uPosition: number
@@ -66,9 +71,12 @@ function sanitizeModification(record: unknown): EquipmentModification | null {
   return {
     id: raw.id,
     timestamp: raw.timestamp,
-    type: raw.type,
+    type: raw.type as ModificationType,
     deviceId: raw.deviceId,
     deviceName: raw.deviceName,
+    targetPhase: typeof raw.targetPhase === "string" ? raw.targetPhase as Phase : undefined,
+    scheduledDate: typeof raw.scheduledDate === "string" ? raw.scheduledDate : undefined,
+    isApplied: typeof raw.isApplied === "boolean" ? raw.isApplied : false,
     from: sanitizePosition(raw.from),
     to: sanitizePosition(raw.to),
     statusChange,

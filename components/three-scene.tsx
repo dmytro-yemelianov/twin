@@ -16,20 +16,48 @@ import {
   type SceneObjects,
   setCameraView,
   fitCameraToScene,
+  create4DConnectionLines,
+  update4DLinesVisibility,
+  highlight4DLines,
+  getRelatedDeviceIds,
+  highlightRelatedDevices,
 } from "@/lib/three/scene-builder"
 import { status4DColors } from "@/lib/types"
 
 function disposeObject(object: THREE.Object3D) {
   object.traverse((child) => {
     if (child instanceof THREE.Mesh) {
-      child.geometry.dispose()
+      // Dispose geometry
+      child.geometry?.dispose()
+      
+      // Dispose materials and their textures
       if (Array.isArray(child.material)) {
-        child.material.forEach((mat) => mat.dispose())
-      } else {
+        child.material.forEach((mat) => {
+          // Dispose textures
+          Object.values(mat).forEach((value: any) => {
+            if (value?.isTexture) {
+              value.dispose()
+            }
+          })
+          mat.dispose()
+        })
+      } else if (child.material) {
+        // Dispose textures
+        Object.values(child.material).forEach((value: any) => {
+          if (value?.isTexture) {
+            value.dispose()
+          }
+        })
         child.material.dispose()
       }
+    } else if ((child as any).isLine) {
+      (child as any).geometry?.dispose()
+      ;(child as any).material?.dispose()
     }
   })
+  
+  // Clear the object from memory
+  object.clear()
 }
 
 class SimpleOrbitControls {
@@ -150,6 +178,9 @@ interface ThreeSceneProps {
   onRackSelect?: (rackId: string | null) => void
   highlightedRacks?: string[]
   xrayMode?: boolean
+  showOrigin?: boolean
+  showCompass?: boolean
+  show4DLines?: boolean
   onCameraView?: (view: string) => void
   triggerResetCamera?: number
   triggerFitView?: number
@@ -168,6 +199,9 @@ export function ThreeScene({
   onDeviceSelect,
   highlightedRacks = [],
   xrayMode = false,
+  showOrigin = false,
+  showCompass = true,
+  show4DLines = false,
   onCameraView,
   triggerResetCamera,
   triggerFitView,
@@ -186,6 +220,9 @@ export function ThreeScene({
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster())
   const mouseRef = useRef<THREE.Vector2>(new THREE.Vector2())
   const previousHighlightedRacksRef = useRef<string[]>([])
+  const originPointRef = useRef<THREE.Group | null>(null)
+  const compassRef = useRef<THREE.Group | null>(null)
+  const connectionLinesRef = useRef<THREE.Group | null>(null)
 
   // Initialize Three.js scene
   useEffect(() => {
@@ -234,6 +271,103 @@ export function ThreeScene({
     const gridHelper = new THREE.GridHelper(50, 50, 0x444444, 0x222222)
     scene.add(gridHelper)
 
+    // Origin point indicator
+    const createOriginPoint = () => {
+      const originGroup = new THREE.Group()
+      
+      // Central sphere
+      const sphereGeometry = new THREE.SphereGeometry(0.15, 16, 12)
+      const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff6b35 })
+      const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial)
+      originGroup.add(sphere)
+      
+      // Axis lines
+      const lineMaterial = new THREE.LineBasicMaterial({ linewidth: 3 })
+      
+      // X-axis (red)
+      const xGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-2, 0, 0),
+        new THREE.Vector3(2, 0, 0)
+      ])
+      const xLine = new THREE.Line(xGeometry, new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 3 }))
+      originGroup.add(xLine)
+      
+      // Y-axis (green)
+      const yGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, -2, 0),
+        new THREE.Vector3(0, 2, 0)
+      ])
+      const yLine = new THREE.Line(yGeometry, new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 3 }))
+      originGroup.add(yLine)
+      
+      // Z-axis (blue)
+      const zGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, -2),
+        new THREE.Vector3(0, 0, 2)
+      ])
+      const zLine = new THREE.Line(zGeometry, new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 3 }))
+      originGroup.add(zLine)
+      
+      originGroup.position.set(0, 0.1, 0) // Slightly above floor
+      originGroup.visible = showOrigin
+      
+      return originGroup
+    }
+    
+    const originPoint = createOriginPoint()
+    scene.add(originPoint)
+    originPointRef.current = originPoint
+
+    // Compass indicator
+    const createCompass = () => {
+      const compassGroup = new THREE.Group()
+      
+      // Compass ring
+      const ringGeometry = new THREE.RingGeometry(1.8, 2.0, 32)
+      const ringMaterial = new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.DoubleSide })
+      const ring = new THREE.Mesh(ringGeometry, ringMaterial)
+      ring.rotation.x = -Math.PI / 2
+      compassGroup.add(ring)
+      
+      // North arrow
+      const arrowGeometry = new THREE.ConeGeometry(0.1, 0.3, 8)
+      const northMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 })
+      const northArrow = new THREE.Mesh(arrowGeometry, northMaterial)
+      northArrow.position.set(0, 0.2, -1.9)
+      northArrow.rotation.x = Math.PI / 2
+      compassGroup.add(northArrow)
+      
+      // Directional labels using simple geometry
+      const labelMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff })
+      
+      // N, S, E, W markers using small cubes
+      const labelGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1)
+      const nMarker = new THREE.Mesh(labelGeometry, new THREE.MeshBasicMaterial({ color: 0xff0000 }))
+      nMarker.position.set(0, 0.1, -2.2)
+      compassGroup.add(nMarker)
+      
+      const sMarker = new THREE.Mesh(labelGeometry, new THREE.MeshBasicMaterial({ color: 0x00ff00 }))
+      sMarker.position.set(0, 0.1, 2.2)
+      compassGroup.add(sMarker)
+      
+      const eMarker = new THREE.Mesh(labelGeometry, new THREE.MeshBasicMaterial({ color: 0x0000ff }))
+      eMarker.position.set(2.2, 0.1, 0)
+      compassGroup.add(eMarker)
+      
+      const wMarker = new THREE.Mesh(labelGeometry, new THREE.MeshBasicMaterial({ color: 0xffff00 }))
+      wMarker.position.set(-2.2, 0.1, 0)
+      compassGroup.add(wMarker)
+      
+      compassGroup.position.set(0, 0.05, 0)
+      compassGroup.visible = showCompass
+      
+      return compassGroup
+    }
+    
+    const compass = createCompass()
+    scene.add(compass)
+    compassRef.current = compass
+
     // Animation loop
     let animationId: number
     const animate = () => {
@@ -278,24 +412,41 @@ export function ThreeScene({
       const intersects = raycasterRef.current.intersectObjects(scene.children, true)
 
       if (intersects.length > 0) {
-        // Find the device or rack object
-        let object = intersects[0].object
+        // Check ALL intersections and prioritize devices over racks
+        let foundDevice: THREE.Object3D | null = null
+        let foundRack: THREE.Object3D | null = null
+
+        for (const intersection of intersects) {
+          let object = intersection.object
+          // Traverse up to find the typed parent
         while (object.parent && !object.userData.type) {
           object = object.parent
         }
 
-        if (object.userData.type === "device") {
-          onDeviceSelect(object.name)
+          if (object.userData.type === "device" && !foundDevice) {
+            foundDevice = object
+            break // Devices take priority, stop searching
+          } else if (object.userData.type === "rack" && !foundRack) {
+            foundRack = object
+            // Don't break - keep looking for devices
+          }
+        }
+
+        // Prioritize device selection over rack selection
+        if (foundDevice) {
+          onDeviceSelect(foundDevice.name)
           onRackSelect?.(null)
           return
-        } else if (object.userData.type === "rack") {
-          // Handle rack selection
-          onRackSelect?.(object.name)
+        }
+
+        // Only select rack if no device was found (clicking on empty rack space)
+        if (foundRack) {
+          onRackSelect?.(foundRack.name)
           onDeviceSelect(null)
 
           // Focus camera on rack
           if (sceneObjectsRef.current && cameraRef.current && controlsRef.current) {
-            const rackGroup = sceneObjectsRef.current.racks.get(object.name)
+            const rackGroup = sceneObjectsRef.current.racks.get(foundRack.name)
             if (rackGroup) {
               focusCameraOnRack(cameraRef.current, controlsRef.current, rackGroup)
             }
@@ -351,12 +502,20 @@ export function ThreeScene({
       previousHighlightedRacksRef.current = []
     }
 
+    // Clean up previous connection lines
+    if (connectionLinesRef.current) {
+      scene.remove(connectionLinesRef.current)
+      disposeObject(connectionLinesRef.current)
+      connectionLinesRef.current = null
+    }
+
     buildScene(sceneConfig, deviceTypeMap).then((objects) => {
       if (!sceneRef.current || isCancelled) return
 
-      // Add building
+      // Add building with initial visibility
       if (objects.building) {
         objects.building.userData.sceneObject = true
+        objects.building.visible = showBuilding
         scene.add(objects.building)
       }
 
@@ -367,12 +526,20 @@ export function ThreeScene({
       })
 
       sceneObjectsRef.current = objects
+
+      // Create 4D connection lines
+      const linesGroup = create4DConnectionLines(objects, sceneConfig)
+      linesGroup.visible = show4DLines
+      scene.add(linesGroup)
+      connectionLinesRef.current = linesGroup
     })
 
     return () => {
       isCancelled = true
     }
-  }, [sceneConfig, deviceTypes])
+    // Note: showBuilding is used for initial visibility but not in deps to avoid full rebuild
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sceneConfig, deviceTypes, show4DLines])
 
   // Update device visibility based on status filters
   useEffect(() => {
@@ -413,21 +580,39 @@ export function ThreeScene({
     sceneObjectsRef.current.building.visible = showBuilding
   }, [showBuilding])
 
+  // Handle device selection and highlight related devices
   useEffect(() => {
     if (!sceneObjectsRef.current) return
 
     const { devices } = sceneObjectsRef.current
 
-    devices.forEach((deviceGroup, deviceId) => {
-      const isSelected = deviceId === selectedDeviceId
-      highlightDevice(deviceGroup, isSelected)
+    // Get related device IDs (same logicalEquipmentId)
+    const relatedDeviceIds = selectedDeviceId 
+      ? getRelatedDeviceIds(sceneConfig, selectedDeviceId)
+      : []
+    
+    // Get the logicalEquipmentId for the selected device
+    const selectedDevice = selectedDeviceId 
+      ? sceneConfig.devices.find(d => d.id === selectedDeviceId)
+      : null
+    const logicalEquipmentId = selectedDevice?.logicalEquipmentId || null
+
+    // Highlight the selected device and related devices
+    highlightRelatedDevices(sceneObjectsRef.current, relatedDeviceIds, selectedDeviceId)
+
+    // Update 4D connection lines highlighting
+    if (connectionLinesRef.current) {
+      highlight4DLines(connectionLinesRef.current, selectedDeviceId, logicalEquipmentId)
+    }
 
       // Focus camera on selected device
-      if (isSelected && cameraRef.current && controlsRef.current) {
+    if (selectedDeviceId) {
+      const deviceGroup = devices.get(selectedDeviceId)
+      if (deviceGroup && cameraRef.current && controlsRef.current) {
         focusCameraOnDevice(cameraRef.current, controlsRef.current, deviceGroup)
       }
-    })
-  }, [selectedDeviceId])
+    }
+  }, [selectedDeviceId, sceneConfig])
 
   useEffect(() => {
     if (!sceneObjectsRef.current) return
@@ -461,6 +646,12 @@ export function ThreeScene({
     if (!sceneObjectsRef.current?.building) return
     updateBuildingTransparency(sceneObjectsRef.current.building, xrayMode)
   }, [xrayMode])
+
+  // Update 4D connection lines visibility
+  useEffect(() => {
+    if (!connectionLinesRef.current) return
+    update4DLinesVisibility(connectionLinesRef.current, show4DLines)
+  }, [show4DLines])
 
   useEffect(() => {
     if (!sceneObjectsRef.current) return
@@ -513,6 +704,20 @@ export function ThreeScene({
     setCameraView(cameraRef.current, controlsRef.current, triggerSetView.view as any, box)
     onCameraView?.(triggerSetView.view)
   }, [triggerSetView, onCameraView])
+
+  // Update origin point visibility
+  useEffect(() => {
+    if (originPointRef.current) {
+      originPointRef.current.visible = showOrigin
+    }
+  }, [showOrigin])
+
+  // Update compass visibility
+  useEffect(() => {
+    if (compassRef.current) {
+      compassRef.current.visible = showCompass
+    }
+  }, [showCompass])
 
   return <div ref={containerRef} className="w-full h-full" />
 }

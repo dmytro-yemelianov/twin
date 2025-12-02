@@ -1,15 +1,19 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { ZoomIn, ZoomOut, Maximize2, RotateCw, Compass } from "lucide-react"
+import { ZoomIn, ZoomOut, Maximize2, RotateCw, Compass, Navigation, Target, Grid3x3 } from "lucide-react"
 import { useState } from "react"
 
 interface ViewportControlsProps {
   onResetCamera: () => void
   onFitView: () => void
-  onSetView: (view: "top" | "front" | "side" | "isometric" | "perspective") => void
+  onSetView: (view: "top" | "bottom" | "front" | "back" | "left" | "right" | "isometric" | "perspective") => void
   onZoomIn: () => void
   onZoomOut: () => void
+  onToggleOrigin?: () => void
+  onToggleCompass?: () => void
+  showOrigin?: boolean
+  showCompass?: boolean
   currentView?: string
 }
 
@@ -19,6 +23,10 @@ export function ViewportControls({
   onSetView,
   onZoomIn,
   onZoomOut,
+  onToggleOrigin,
+  onToggleCompass,
+  showOrigin = false,
+  showCompass = true,
   currentView = "perspective",
 }: ViewportControlsProps) {
   const [hoveredFace, setHoveredFace] = useState<string | null>(null)
@@ -32,7 +40,8 @@ export function ViewportControls({
   return (
     <div className="absolute top-4 right-4 z-20 flex flex-col gap-3">
       <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
-        <div className="grid grid-cols-3 grid-rows-3 gap-1 mb-3">
+        {/* 3D Navigation Cube */}
+        <div className="grid grid-cols-3 grid-rows-3 gap-1 mb-3 relative">
           {/* Top face */}
           <button
             onClick={() => onSetView("top")}
@@ -40,101 +49,139 @@ export function ViewportControls({
             onMouseLeave={() => setHoveredFace(null)}
             className={`
               col-start-2 row-start-1
-              w-12 h-12 border border-border/50 rounded
-              flex items-center justify-center text-[10px] font-bold
+              w-10 h-10 border border-border/50 rounded text-[8px] font-bold
               transition-all duration-200
               ${currentView === "top" ? "bg-primary text-primary-foreground" : "bg-muted/50 hover:bg-muted"}
               ${hoveredFace === "top" ? "scale-105 shadow-md" : ""}
             `}
             title="Top View (Plan)"
           >
-            <div className="text-center leading-tight">
-              TOP
-              <div className="text-[8px] opacity-70">XY</div>
-            </div>
+            TOP
           </button>
 
-          {/* Front face */}
+          {/* Left face */}
+          <button
+            onClick={() => onSetView("left")}
+            onMouseEnter={() => setHoveredFace("left")}
+            onMouseLeave={() => setHoveredFace(null)}
+            className={`
+              col-start-1 row-start-2
+              w-10 h-10 border border-border/50 rounded text-[8px] font-bold
+              transition-all duration-200
+              ${currentView === "left" ? "bg-primary text-primary-foreground" : "bg-muted/50 hover:bg-muted"}
+              ${hoveredFace === "left" ? "scale-105 shadow-md" : ""}
+            `}
+            title="Left Side View"
+          >
+            LEFT
+          </button>
+
+          {/* Front face (center) */}
           <button
             onClick={() => onSetView("front")}
             onMouseEnter={() => setHoveredFace("front")}
             onMouseLeave={() => setHoveredFace(null)}
             className={`
               col-start-2 row-start-2
-              w-12 h-12 border border-border/50 rounded
-              flex items-center justify-center text-[10px] font-bold
+              w-10 h-10 border border-border/50 rounded text-[8px] font-bold
               transition-all duration-200
               ${currentView === "front" ? "bg-primary text-primary-foreground" : "bg-muted/50 hover:bg-muted"}
               ${hoveredFace === "front" ? "scale-105 shadow-md" : ""}
             `}
-            title="Front View (Elevation)"
+            title="Front View"
           >
-            <div className="text-center leading-tight">
-              FRONT
-              <div className="text-[8px] opacity-70">XZ</div>
-            </div>
+            FRONT
           </button>
 
           {/* Right face */}
           <button
-            onClick={() => onSetView("side")}
-            onMouseEnter={() => setHoveredFace("side")}
+            onClick={() => onSetView("right")}
+            onMouseEnter={() => setHoveredFace("right")}
             onMouseLeave={() => setHoveredFace(null)}
             className={`
               col-start-3 row-start-2
-              w-12 h-12 border border-border/50 rounded
-              flex items-center justify-center text-[10px] font-bold
+              w-10 h-10 border border-border/50 rounded text-[8px] font-bold
               transition-all duration-200
-              ${currentView === "side" ? "bg-primary text-primary-foreground" : "bg-muted/50 hover:bg-muted"}
-              ${hoveredFace === "side" ? "scale-105 shadow-md" : ""}
+              ${currentView === "right" ? "bg-primary text-primary-foreground" : "bg-muted/50 hover:bg-muted"}
+              ${hoveredFace === "right" ? "scale-105 shadow-md" : ""}
             `}
             title="Right Side View"
           >
-            <div className="text-center leading-tight">
-              RIGHT
-              <div className="text-[8px] opacity-70">YZ</div>
-            </div>
+            RIGHT
           </button>
 
-          {/* Isometric button - corner position */}
+          {/* Bottom face */}
+          <button
+            onClick={() => onSetView("bottom")}
+            onMouseEnter={() => setHoveredFace("bottom")}
+            onMouseLeave={() => setHoveredFace(null)}
+            className={`
+              col-start-2 row-start-3
+              w-10 h-10 border border-border/50 rounded text-[8px] font-bold
+              transition-all duration-200
+              ${currentView === "bottom" ? "bg-primary text-primary-foreground" : "bg-muted/50 hover:bg-muted"}
+              ${hoveredFace === "bottom" ? "scale-105 shadow-md" : ""}
+            `}
+            title="Bottom View"
+          >
+            BOTTOM
+          </button>
+
+          {/* Back face */}
+          <button
+            onClick={() => onSetView("back")}
+            onMouseEnter={() => setHoveredFace("back")}
+            onMouseLeave={() => setHoveredFace(null)}
+            className={`
+              col-start-1 row-start-3
+              w-10 h-10 border border-border/50 rounded text-[8px] font-bold
+              transition-all duration-200
+              ${currentView === "back" ? "bg-primary text-primary-foreground" : "bg-muted/50 hover:bg-muted"}
+              ${hoveredFace === "back" ? "scale-105 shadow-md" : ""}
+            `}
+            title="Back View"
+          >
+            BACK
+          </button>
+
+          {/* Isometric corner */}
           <button
             onClick={() => onSetView("isometric")}
             onMouseEnter={() => setHoveredFace("isometric")}
             onMouseLeave={() => setHoveredFace(null)}
             className={`
               col-start-3 row-start-1
-              w-12 h-12 border border-border/50 rounded
+              w-10 h-10 border border-border/50 rounded
               flex items-center justify-center
               transition-all duration-200
               ${currentView === "isometric" ? "bg-primary text-primary-foreground" : "bg-muted/50 hover:bg-muted"}
               ${hoveredFace === "isometric" ? "scale-105 shadow-md" : ""}
             `}
-            title="Isometric View (45°)"
+            title="Isometric View"
           >
-            <Compass className="w-5 h-5" />
+            <Compass className="w-4 h-4" />
           </button>
 
-          {/* Perspective button - corner position */}
+          {/* Perspective corner */}
           <button
             onClick={() => onSetView("perspective")}
             onMouseEnter={() => setHoveredFace("perspective")}
             onMouseLeave={() => setHoveredFace(null)}
             className={`
               col-start-1 row-start-1
-              w-12 h-12 border border-border/50 rounded
-              flex items-center justify-center text-[10px] font-bold
+              w-10 h-10 border border-border/50 rounded text-[8px] font-bold
               transition-all duration-200
               ${currentView === "perspective" ? "bg-primary text-primary-foreground" : "bg-muted/50 hover:bg-muted"}
               ${hoveredFace === "perspective" ? "scale-105 shadow-md" : ""}
             `}
             title="Perspective View"
           >
-            <div className="text-center leading-tight">3D</div>
+            3D
           </button>
         </div>
 
-        <div className="text-[10px] text-center text-muted-foreground border-t border-border/50 pt-2">
-          Current: <span className="font-semibold text-foreground">{currentView.toUpperCase()}</span>
+        <div className="text-[9px] text-center text-muted-foreground border-t border-border/50 pt-2">
+          <span className="font-semibold text-foreground">{currentView.toUpperCase()}</span>
         </div>
       </div>
 
@@ -186,19 +233,53 @@ export function ViewportControls({
         </Button>
       </div>
 
-      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-2 shadow-lg text-[10px] text-muted-foreground max-w-[160px]">
+      {/* Scene Helpers Toggle */}
+      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg flex flex-col">
+        {onToggleOrigin && (
+          <>
+            <Button
+              variant={showOrigin ? "default" : "ghost"}
+              size="icon"
+              onClick={onToggleOrigin}
+              className="rounded-none rounded-t-lg hover:bg-muted"
+              title="Toggle Origin Point"
+            >
+              <Target className="w-4 h-4" />
+            </Button>
+            <div className="border-t border-border/50" />
+          </>
+        )}
+        
+        {onToggleCompass && (
+          <Button
+            variant={showCompass ? "default" : "ghost"}
+            size="icon"
+            onClick={onToggleCompass}
+            className={`rounded-none ${!onToggleOrigin ? 'rounded-t-lg' : ''} rounded-b-lg hover:bg-muted`}
+            title="Toggle Compass"
+          >
+            <Navigation className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+
+      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-2 shadow-lg text-[9px] text-muted-foreground max-w-[140px]">
         <div className="space-y-0.5">
           <div className="flex items-center gap-1">
-            <span className="font-semibold">LMB:</span>
+            <span className="font-semibold text-[8px]">LMB:</span>
             <span>Rotate</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="font-semibold">RMB:</span>
+            <span className="font-semibold text-[8px]">RMB:</span>
             <span>Pan</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="font-semibold">Wheel:</span>
+            <span className="font-semibold text-[8px]">Wheel:</span>
             <span>Zoom</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="font-semibold text-[8px]">F:</span>
+            <span>Fit All</span>
           </div>
         </div>
       </div>

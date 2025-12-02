@@ -1,3 +1,11 @@
+// Re-export the optimized TwinViewer
+import { TwinViewerOptimized } from "./twin-viewer-optimized"
+
+// Export as default to avoid conflicts
+export default TwinViewerOptimized
+export { TwinViewerOptimized }
+
+// Keep the old implementation for reference
 "use client"
 
 import { useEffect, useState } from "react"
@@ -389,7 +397,6 @@ export function TwinViewer({ site }: TwinViewerProps) {
                 onRackSelect={setSelectedRackId}
                 highlightedRacks={highlightedRacks}
                 xrayMode={xrayMode}
-                customGeometry={customGeometry}
                 onCameraView={setCurrentCameraView}
                 triggerResetCamera={resetCameraTrigger}
                 triggerFitView={fitViewTrigger}

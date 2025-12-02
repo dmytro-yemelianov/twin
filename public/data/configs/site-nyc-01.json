@@ -8,31 +8,108 @@
       "scale": [1, 1, 1]
     }
   },
+  "buildings": [
+    {
+      "id": "bldg-nyc-01-a",
+      "siteId": "site-nyc-01",
+      "name": "Building A - Main DC",
+      "glbUri": "/geometry/sites/site-nyc-01/building-a.glb",
+      "transformWorld": {
+        "position": [0, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "floors": 2,
+      "area": 5000
+    },
+    {
+      "id": "bldg-nyc-01-b",
+      "siteId": "site-nyc-01",
+      "name": "Building B - Expansion",
+      "glbUri": "/geometry/sites/site-nyc-01/building-b.glb",
+      "transformWorld": {
+        "position": [50, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "floors": 1,
+      "area": 3000
+    }
+  ],
+  "floors": [
+    {
+      "id": "floor-nyc-01-a-g",
+      "buildingId": "bldg-nyc-01-a",
+      "name": "Ground Floor",
+      "level": 0,
+      "elevation": 0
+    },
+    {
+      "id": "floor-nyc-01-a-1",
+      "buildingId": "bldg-nyc-01-a",
+      "name": "First Floor",
+      "level": 1,
+      "elevation": 4
+    },
+    {
+      "id": "floor-nyc-01-b-g",
+      "buildingId": "bldg-nyc-01-b",
+      "name": "Ground Floor",
+      "level": 0,
+      "elevation": 0
+    }
+  ],
   "rooms": [
     {
       "id": "room-DC-01",
-      "name": "Primary Data Hall",
+      "floorId": "floor-nyc-01-a-g",
+      "name": "Data Hall Alpha",
       "transformInBuilding": {
         "position": [0, 0, 0],
         "rotationEuler": [0, 0, 0],
         "scale": [1, 1, 1]
-      }
+      },
+      "area": 800
     },
     {
       "id": "room-DC-02",
-      "name": "AI/ML Compute Hall",
+      "floorId": "floor-nyc-01-a-g",
+      "name": "Data Hall Beta",
       "transformInBuilding": {
         "position": [30, 0, 0],
         "rotationEuler": [0, 0, 0],
         "scale": [1, 1, 1]
-      }
+      },
+      "area": 600
+    },
+    {
+      "id": "room-DC-03",
+      "floorId": "floor-nyc-01-a-1",
+      "name": "AI/ML Compute Hall",
+      "transformInBuilding": {
+        "position": [0, 4, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "area": 1000
+    },
+    {
+      "id": "room-DC-04",
+      "floorId": "floor-nyc-01-b-g",
+      "name": "Expansion Hall",
+      "transformInBuilding": {
+        "position": [50, 0, 0],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "area": 1200
     }
   ],
   "racks": [
     {
       "id": "rack-01",
       "roomId": "room-DC-01",
-      "name": "Rack 01",
+      "name": "A-01-01",
       "uHeight": 42,
       "positionInRoom": {
         "position": [2, 0, 1],
@@ -45,7 +122,7 @@
     {
       "id": "rack-02",
       "roomId": "room-DC-01",
-      "name": "Rack 02",
+      "name": "A-01-02",
       "uHeight": 42,
       "positionInRoom": {
         "position": [4, 0, 1],
@@ -58,7 +135,7 @@
     {
       "id": "rack-03",
       "roomId": "room-DC-01",
-      "name": "Rack 03",
+      "name": "A-01-03",
       "uHeight": 42,
       "positionInRoom": {
         "position": [6, 0, 1],
@@ -70,11 +147,11 @@
     },
     {
       "id": "rack-04",
-      "roomId": "room-DC-01",
-      "name": "Rack 04",
+      "roomId": "room-DC-02",
+      "name": "A-01-04",
       "uHeight": 42,
       "positionInRoom": {
-        "position": [8, 0, 1],
+        "position": [2, 0, 1],
         "rotationEuler": [0, 0, 0],
         "scale": [1, 1, 1]
       },
@@ -83,8 +160,8 @@
     },
     {
       "id": "rack-05",
-      "roomId": "room-DC-02",
-      "name": "Rack 05 (AI Ready)",
+      "roomId": "room-DC-03",
+      "name": "A-02-01",
       "uHeight": 42,
       "positionInRoom": {
         "position": [2, 0, 1],
@@ -96,8 +173,8 @@
     },
     {
       "id": "rack-06",
-      "roomId": "room-DC-02",
-      "name": "Rack 06 (AI Ready)",
+      "roomId": "room-DC-03",
+      "name": "A-02-02",
       "uHeight": 42,
       "positionInRoom": {
         "position": [4, 0, 1],
@@ -106,6 +183,32 @@
       },
       "powerKwLimit": 20.0,
       "currentPowerKw": 1.8
+    },
+    {
+      "id": "rack-07",
+      "roomId": "room-DC-04",
+      "name": "B-01-01",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [2, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 15.0,
+      "currentPowerKw": 0
+    },
+    {
+      "id": "rack-08",
+      "roomId": "room-DC-04",
+      "name": "B-01-02",
+      "uHeight": 42,
+      "positionInRoom": {
+        "position": [4, 0, 1],
+        "rotationEuler": [0, 0, 0],
+        "scale": [1, 1, 1]
+      },
+      "powerKwLimit": 15.0,
+      "currentPowerKw": 0
     }
   ],
   "devices": [
@@ -125,7 +228,7 @@
       "logicalEquipmentId": "logical-002",
       "rackId": "rack-01",
       "deviceTypeId": "server-4u",
-      "name": "PostgreSQL Primary DB",
+      "name": "PostgreSQL Primary",
       "uStart": 15,
       "uHeight": 4,
       "status4D": "EXISTING_RETAINED",
@@ -191,7 +294,7 @@
       "logicalEquipmentId": "logical-008",
       "rackId": "rack-03",
       "deviceTypeId": "gpu-server-8u",
-      "name": "AI Training Cluster Node 01",
+      "name": "AI Training Node 01",
       "uStart": 10,
       "uHeight": 8,
       "status4D": "PROPOSED",
@@ -213,10 +316,10 @@
       "logicalEquipmentId": "logical-010",
       "rackId": "rack-04",
       "deviceTypeId": "blade-enclosure-10u",
-      "name": "Blade Chassis 01 (Current Location)",
+      "name": "Blade Chassis 01",
       "uStart": 8,
       "uHeight": 10,
-      "status4D": "MODIFIED",
+      "status4D": "EXISTING_RETAINED",
       "powerKw": 4.8
     },
     {
@@ -224,7 +327,7 @@
       "logicalEquipmentId": "logical-010",
       "rackId": "rack-05",
       "deviceTypeId": "blade-enclosure-10u",
-      "name": "Blade Chassis 01 (Future Location)",
+      "name": "Blade Chassis 01 (Relocated)",
       "uStart": 12,
       "uHeight": 10,
       "status4D": "MODIFIED",
@@ -262,6 +365,72 @@
       "uHeight": 1,
       "status4D": "EXISTING_RETAINED",
       "powerKw": 0.0
+    },
+    {
+      "id": "dev-015",
+      "logicalEquipmentId": "logical-001",
+      "rackId": "rack-02",
+      "deviceTypeId": "server-2u",
+      "name": "Web Server 01 (Migrated)",
+      "uStart": 10,
+      "uHeight": 2,
+      "status4D": "PROPOSED",
+      "powerKw": 0.8
+    },
+    {
+      "id": "dev-016",
+      "logicalEquipmentId": "logical-002",
+      "rackId": "rack-03",
+      "deviceTypeId": "server-4u",
+      "name": "PostgreSQL Primary (Upgraded)",
+      "uStart": 25,
+      "uHeight": 4,
+      "status4D": "MODIFIED",
+      "powerKw": 2.0
+    },
+    {
+      "id": "dev-017",
+      "logicalEquipmentId": "logical-003",
+      "rackId": "rack-02",
+      "deviceTypeId": "switch-2u",
+      "name": "10Gb Switch (Replacement)",
+      "uStart": 38,
+      "uHeight": 2,
+      "status4D": "PROPOSED",
+      "powerKw": 0.4
+    },
+    {
+      "id": "dev-018",
+      "logicalEquipmentId": "logical-006",
+      "rackId": "rack-05",
+      "deviceTypeId": "gpu-server-4u",
+      "name": "AI Inference Node 01 (Relocated)",
+      "uStart": 5,
+      "uHeight": 4,
+      "status4D": "FUTURE",
+      "powerKw": 3.8
+    },
+    {
+      "id": "dev-019",
+      "logicalEquipmentId": "logical-014",
+      "rackId": "rack-07",
+      "deviceTypeId": "gpu-server-8u",
+      "name": "AI Training Node 02",
+      "uStart": 10,
+      "uHeight": 8,
+      "status4D": "FUTURE",
+      "powerKw": 6.5
+    },
+    {
+      "id": "dev-020",
+      "logicalEquipmentId": "logical-015",
+      "rackId": "rack-08",
+      "deviceTypeId": "storage-4u",
+      "name": "Expansion Storage",
+      "uStart": 20,
+      "uHeight": 4,
+      "status4D": "FUTURE",
+      "powerKw": 2.5
     }
   ]
 }

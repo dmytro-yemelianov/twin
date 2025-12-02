@@ -6,25 +6,42 @@ import { Button } from "./ui/button"
 import { Label } from "./ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Textarea } from "./ui/textarea"
-import type { Device, SceneConfig, Status4D } from "@/lib/types"
+import { Input } from "./ui/input"
+import type { Device, SceneConfig, Status4D, Phase } from "@/lib/types"
+import { status4DColors, status4DLabels } from "@/lib/types"
 import { validateDevicePlacement, getAvailableUPositions } from "@/lib/validation"
 import { addModification, getModifications } from "@/lib/modification-tracker"
-import { Move, AlertCircle, CheckCircle2, History, ArrowRight } from "lucide-react"
+import { Move, AlertCircle, CheckCircle2, History, ArrowRight, GitBranch, MapPin } from "lucide-react"
 
 interface EquipmentEditorProps {
   sceneConfig: SceneConfig
   selectedDeviceId: string | null
+  currentPhase: Phase
   onDeviceModified: (updatedDevice: Device) => void
   onClose?: () => void
 }
 
-export function EquipmentEditor({ sceneConfig, selectedDeviceId, onDeviceModified, onClose }: EquipmentEditorProps) {
+export function EquipmentEditor({ sceneConfig, selectedDeviceId, currentPhase, onDeviceModified, onClose }: EquipmentEditorProps) {
   const selectedDevice = useMemo(() => {
     return sceneConfig.devices.find((d) => d.id === selectedDeviceId)
   }, [sceneConfig, selectedDeviceId])
 
+  // Get all related devices (same logicalEquipmentId) across all 4D states
+  const deviceHistory = useMemo(() => {
+    if (!selectedDevice) return []
+    return sceneConfig.devices
+      .filter((d) => d.logicalEquipmentId === selectedDevice.logicalEquipmentId)
+      .sort((a, b) => {
+        // Sort by 4D status order
+        const statusOrder: Status4D[] = ["EXISTING_REMOVED", "EXISTING_RETAINED", "MODIFIED", "PROPOSED", "FUTURE"]
+        return statusOrder.indexOf(a.status4D) - statusOrder.indexOf(b.status4D)
+      })
+  }, [sceneConfig, selectedDevice])
+
   const [targetRackId, setTargetRackId] = useState<string>(selectedDevice?.rackId || "")
   const [targetUPosition, setTargetUPosition] = useState<string>(selectedDevice?.uStart.toString() || "")
+  const [targetPhase, setTargetPhase] = useState<Phase>(currentPhase)
+  const [scheduledDate, setScheduledDate] = useState<string>(new Date().toISOString().split('T')[0])
   const [notes, setNotes] = useState<string>("")
   const [validationResult, setValidationResult] = useState<ReturnType<typeof validateDevicePlacement> | null>(null)
 
@@ -100,11 +117,14 @@ export function EquipmentEditor({ sceneConfig, selectedDeviceId, onDeviceModifie
       status4D: newStatus,
     }
 
-    // Log the modification
-    addModification({
+    // Log the modification with phase scheduling
+    const modification = addModification({
       type: "move",
       deviceId: selectedDevice.id,
       deviceName: selectedDevice.name,
+      targetPhase: targetPhase,
+      scheduledDate: scheduledDate,
+      isApplied: targetPhase === currentPhase, // Only apply if target phase matches current
       from: {
         rackId: selectedDevice.rackId,
         uPosition: selectedDevice.uStart,
@@ -123,13 +143,17 @@ export function EquipmentEditor({ sceneConfig, selectedDeviceId, onDeviceModifie
       notes: notes || undefined,
     })
 
-    // Apply the modification
-    onDeviceModified(updatedDevice)
+    // Only apply the modification immediately if target phase matches current phase
+    if (targetPhase === currentPhase) {
+      onDeviceModified(updatedDevice)
+      alert("Device moved successfully!")
+    } else {
+      alert(`Move scheduled for ${targetPhase} phase on ${scheduledDate}`)
+    }
 
     // Reset form
     setNotes("")
     setValidationResult(null)
-    alert("Device moved successfully!")
   }
 
   if (!selectedDevice) {
@@ -181,6 +205,88 @@ export function EquipmentEditor({ sceneConfig, selectedDeviceId, onDeviceModifie
           </div>
         </div>
       </Card>
+
+      {/* 4D State Timeline - Device History */}
+      {deviceHistory.length > 1 && (
+        <Card className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <GitBranch className="w-4 h-4 text-cyan-400" />
+            <h4 className="text-sm font-semibold">4D State Timeline</h4>
+            <span className="text-xs text-muted-foreground">({deviceHistory.length} states)</span>
+          </div>
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="absolute left-3 top-3 bottom-3 w-0.5 bg-gradient-to-b from-cyan-500/50 via-cyan-500/30 to-cyan-500/10" />
+            
+            <div className="space-y-3">
+              {deviceHistory.map((device, index) => {
+                const rack = sceneConfig.racks.find((r) => r.id === device.rackId)
+                const isCurrentSelection = device.id === selectedDeviceId
+                const color = status4DColors[device.status4D]
+                
+                return (
+                  <div
+                    key={device.id}
+                    className={`relative pl-8 py-2 rounded transition-all ${
+                      isCurrentSelection 
+                        ? 'bg-blue-950/30 border border-blue-500/30' 
+                        : 'hover:bg-muted/20'
+                    }`}
+                  >
+                    {/* Timeline dot */}
+                    <div
+                      className={`absolute left-1.5 top-4 w-3 h-3 rounded-full border-2 ${
+                        isCurrentSelection ? 'border-blue-400' : 'border-background'
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                    
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="px-1.5 py-0.5 rounded text-[10px] font-medium text-white"
+                            style={{ backgroundColor: color }}
+                          >
+                            {status4DLabels[device.status4D]}
+                          </span>
+                          {isCurrentSelection && (
+                            <span className="text-[10px] text-blue-400 font-medium">← Selected</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <MapPin className="w-3 h-3" />
+                          <span>{rack?.name || 'Unknown'}</span>
+                          <span>•</span>
+                          <span>U{device.uStart}-{device.uStart + device.uHeight - 1}</span>
+                        </div>
+                        {device.rackId !== selectedDevice.rackId && (
+                          <div className="text-[10px] text-yellow-500/80 mt-0.5">
+                            Different location from selected
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right text-xs">
+                        <div className="text-muted-foreground">{device.powerKw}kW</div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+          
+          {/* Summary */}
+          <div className="mt-3 pt-3 border-t border-border/30 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <span>Equipment ID:</span>
+              <code className="px-1 py-0.5 bg-muted/30 rounded text-[10px]">
+                {selectedDevice.logicalEquipmentId}
+              </code>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Move Controls */}
       <Card className="p-4 space-y-4">
@@ -234,6 +340,31 @@ export function EquipmentEditor({ sceneConfig, selectedDeviceId, onDeviceModifie
               )}
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-sm">Target Phase</Label>
+              <Select value={targetPhase} onValueChange={(value) => setTargetPhase(value as Phase)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="AS_IS">As-Is (Current)</SelectItem>
+                  <SelectItem value="TO_BE">To-Be (Target)</SelectItem>
+                  <SelectItem value="FUTURE">Future (Long-term)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm">Scheduled Date</Label>
+              <Input
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+          </div>
 
           <div>
             <Label className="text-sm">Notes (Optional)</Label>
@@ -291,7 +422,7 @@ export function EquipmentEditor({ sceneConfig, selectedDeviceId, onDeviceModifie
         )}
 
         <Button className="w-full" disabled={!validationResult?.valid} onClick={handleMove}>
-          Apply Move
+          {targetPhase === currentPhase ? 'Apply Move Now' : `Schedule for ${targetPhase} Phase`}
         </Button>
       </Card>
 

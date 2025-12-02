@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Eye, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronRight, MapPin, Building2 } from "lucide-react"
 
 interface SitesDatatableProps {
   sites: Site[]
@@ -31,12 +32,16 @@ const statusLabels = {
 type SortField = "id" | "name" | "region" | "status" | "rackCount" | "aiReadyRacks"
 type SortDirection = "asc" | "desc" | null
 
+type ViewMode = "table" | "grouped"
+
 export function SitesDatatable({ sites, selectedSite, onSiteSelect, onViewTwin }: SitesDatatableProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [regionGroup, setRegionGroup] = useState<string>("all")
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>("grouped")
+  const [expandedRegions, setExpandedRegions] = useState<Set<string>>(new Set())
 
   const processedSites = useMemo(() => {
     let filtered = sites
@@ -87,6 +92,37 @@ export function SitesDatatable({ sites, selectedSite, onSiteSelect, onViewTwin }
     return Array.from(new Set(sites.map((site) => site.region))).sort()
   }, [sites])
 
+  // Group sites by region
+  const sitesByRegion = useMemo(() => {
+    const grouped = new Map<string, Site[]>()
+    processedSites.forEach((site) => {
+      if (!grouped.has(site.region)) {
+        grouped.set(site.region, [])
+      }
+      grouped.get(site.region)!.push(site)
+    })
+    return grouped
+  }, [processedSites])
+
+  const toggleRegion = (region: string) => {
+    setExpandedRegions((prev) => {
+      const next = new Set(prev)
+      if (next.has(region)) {
+        next.delete(region)
+      } else {
+        next.add(region)
+      }
+      return next
+    })
+  }
+
+  // Auto-expand region containing selected site
+  useMemo(() => {
+    if (selectedSite && !expandedRegions.has(selectedSite.region)) {
+      setExpandedRegions((prev) => new Set([...prev, selectedSite.region]))
+    }
+  }, [selectedSite])
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       // Cycle through: asc -> desc -> null
@@ -112,11 +148,36 @@ export function SitesDatatable({ sites, selectedSite, onSiteSelect, onViewTwin }
   return (
     <Card className="border-border/50 h-full flex flex-col">
       <div className="p-3 md:p-4 border-b border-border/50 space-y-3 shrink-0">
+        <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-base md:text-lg">Data Center Sites</h3>
           <p className="text-xs text-muted-foreground mt-1">
-            {processedSites.length} of {sites.length} sites
+              {processedSites.length} of {sites.length} sites • {sitesByRegion.size} regions
           </p>
+          </div>
+          {/* View Mode Toggle */}
+          <div className="flex items-center bg-background/50 rounded-lg p-1 border border-border/30">
+            <button
+              onClick={() => setViewMode("grouped")}
+              className={`px-2 py-1 rounded text-xs transition-all ${
+                viewMode === "grouped"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <MapPin className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              className={`px-2 py-1 rounded text-xs transition-all ${
+                viewMode === "table"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Building2 className="w-3 h-3" />
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
@@ -141,6 +202,7 @@ export function SitesDatatable({ sites, selectedSite, onSiteSelect, onViewTwin }
                 <SelectItem value="LEGACY">Legacy</SelectItem>
               </SelectContent>
             </Select>
+            {viewMode === "table" && (
             <Select value={regionGroup} onValueChange={setRegionGroup}>
               <SelectTrigger className="w-full sm:w-[120px] text-sm">
                 <SelectValue placeholder="Region" />
@@ -154,10 +216,88 @@ export function SitesDatatable({ sites, selectedSite, onSiteSelect, onViewTwin }
                 ))}
               </SelectContent>
             </Select>
+            )}
           </div>
         </div>
       </div>
       <div className="flex-1 overflow-auto">
+        {viewMode === "grouped" ? (
+          /* Grouped by Region View */
+          <div className="p-3 space-y-2">
+            {sitesByRegion.size === 0 ? (
+              <div className="text-center text-muted-foreground py-8 text-sm">
+                No sites found
+              </div>
+            ) : (
+              Array.from(sitesByRegion.entries()).map(([region, regionSites]) => (
+                <Collapsible
+                  key={region}
+                  open={expandedRegions.has(region)}
+                  onOpenChange={() => toggleRegion(region)}
+                >
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-lg transition-colors">
+                      <div className="flex items-center gap-2">
+                        <ChevronRight
+                          className={`w-4 h-4 transition-transform ${
+                            expandedRegions.has(region) ? "rotate-90" : ""
+                          }`}
+                        />
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-medium">{region}</span>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        {regionSites.length} site{regionSites.length !== 1 ? "s" : ""}
+                      </Badge>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="ml-6 mt-1 space-y-1">
+                      {regionSites.map((site) => (
+                        <div
+                          key={site.id}
+                          className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
+                            selectedSite?.id === site.id
+                              ? "bg-accent/50 border border-primary/30"
+                              : "hover:bg-accent/20"
+                          }`}
+                          onClick={() => onSiteSelect(site)}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <div className="min-w-0">
+                              <div className="font-medium text-sm truncate">{site.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {site.rackCount} racks • {site.aiReadyRacks} AI-ready
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Badge variant="outline" className={`${statusColors[site.status]} text-[10px]`}>
+                              {statusLabels[site.status]}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onViewTwin(site)
+                              }}
+                              className="h-7 w-7 p-0"
+                            >
+                              <Eye className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))
+            )}
+          </div>
+        ) : (
+          /* Table View */
         <Table>
           <TableHeader>
             <TableRow>
@@ -255,6 +395,7 @@ export function SitesDatatable({ sites, selectedSite, onSiteSelect, onViewTwin }
             )}
           </TableBody>
         </Table>
+        )}
       </div>
     </Card>
   )

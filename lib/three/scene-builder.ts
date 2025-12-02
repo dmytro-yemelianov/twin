@@ -25,6 +25,66 @@ export function applyTransform(object: THREE.Object3D, transform: Transform) {
   object.scale.set(...transform.scale)
 }
 
+// Create a text sprite for rack labels
+function createTextSprite(text: string, options: { 
+  fontSize?: number
+  color?: string 
+  backgroundColor?: string
+} = {}): THREE.Sprite {
+  const { fontSize = 48, color = '#ffffff', backgroundColor = 'rgba(0,0,0,0.7)' } = options
+  
+  // Check if we're in a browser environment
+  if (typeof document === 'undefined') {
+    // Return an empty sprite for SSR
+    return new THREE.Sprite(new THREE.SpriteMaterial())
+  }
+  
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')!
+  
+  // Set canvas size
+  canvas.width = 256
+  canvas.height = 64
+  
+  // Draw background with rounded corners
+  context.fillStyle = backgroundColor
+  context.beginPath()
+  const radius = 8
+  context.moveTo(radius, 0)
+  context.lineTo(canvas.width - radius, 0)
+  context.quadraticCurveTo(canvas.width, 0, canvas.width, radius)
+  context.lineTo(canvas.width, canvas.height - radius)
+  context.quadraticCurveTo(canvas.width, canvas.height, canvas.width - radius, canvas.height)
+  context.lineTo(radius, canvas.height)
+  context.quadraticCurveTo(0, canvas.height, 0, canvas.height - radius)
+  context.lineTo(0, radius)
+  context.quadraticCurveTo(0, 0, radius, 0)
+  context.closePath()
+  context.fill()
+  
+  // Draw text
+  context.font = `bold ${fontSize}px Arial, sans-serif`
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.fillStyle = color
+  context.fillText(text, canvas.width / 2, canvas.height / 2)
+  
+  // Create texture and sprite
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.needsUpdate = true
+  
+  const spriteMaterial = new THREE.SpriteMaterial({ 
+    map: texture,
+    transparent: true,
+    depthTest: false,
+  })
+  
+  const sprite = new THREE.Sprite(spriteMaterial)
+  sprite.scale.set(1.5, 0.4, 1) // Adjust scale for visibility
+  
+  return sprite
+}
+
 function createRackGeometry(uHeight: number): THREE.Group {
   const group = new THREE.Group()
 
@@ -364,13 +424,20 @@ export async function buildScene(
     objects.rooms.set(room.id, roomGroup)
   })
 
-  // Create racks
+  // Create racks with labels
   for (const rack of sceneConfig.racks) {
     const rackGroup = createRackGeometry(rack.uHeight)
     rackGroup.name = rack.id
     rackGroup.userData = { type: "rack", data: rack }
 
     applyTransform(rackGroup, rack.positionInRoom)
+
+    // Add rack label
+    const rackHeight = (rack.uHeight / 42) * 2.0
+    const label = createTextSprite(rack.name)
+    label.position.set(0, rackHeight + 0.4, 0) // Position above rack
+    label.userData = { type: "rack-label", rackId: rack.id }
+    rackGroup.add(label)
 
     const roomGroup = objects.rooms.get(rack.roomId)
     if (roomGroup) {
@@ -498,6 +565,17 @@ export function updateBuildingTransparency(building: THREE.Group, xrayMode: bool
   })
 }
 
+// Update rack label visibility
+export function updateRackLabelsVisibility(sceneObjects: SceneObjects, visible: boolean) {
+  sceneObjects.racks.forEach((rackGroup) => {
+    rackGroup.traverse((child) => {
+      if (child.userData.type === "rack-label") {
+        child.visible = visible
+      }
+    })
+  })
+}
+
 export function highlightRack(rack: THREE.Group, highlight: boolean) {
   rack.traverse((child) => {
     if (child instanceof THREE.Mesh) {
@@ -541,7 +619,7 @@ export function focusCameraOnRack(camera: THREE.Camera, controls: any, rackGroup
 export function setCameraView(
   camera: THREE.Camera,
   controls: any,
-  view: "top" | "front" | "side" | "isometric" | "perspective",
+  view: "top" | "bottom" | "front" | "back" | "left" | "right" | "isometric" | "perspective",
   sceneBounds?: THREE.Box3,
 ) {
   const target = new THREE.Vector3(0, 0, 0)
@@ -563,15 +641,35 @@ export function setCameraView(
       position.set(target.x, target.y + distance, target.z)
       camera.up.set(0, 0, -1) // Orient camera so north is up in viewport
       break
+    case "bottom":
+      // Bottom view: Look up along Y axis
+      position.set(target.x, target.y - distance, target.z)
+      camera.up.set(0, 0, 1) // Flip orientation for bottom view
+      break
     case "front":
       // Front view: Look along Z axis (XY plane visible)
       position.set(target.x, target.y, target.z - distance)
       camera.up.set(0, 1, 0) // Standard up direction
       break
-    case "side":
+    case "back":
+      // Back view: Look along negative Z axis
+      position.set(target.x, target.y, target.z + distance)
+      camera.up.set(0, 1, 0) // Standard up direction
+      break
+    case "left":
+      // Left side view: Look along negative X axis
+      position.set(target.x - distance, target.y, target.z)
+      camera.up.set(0, 1, 0) // Standard up direction
+      break
+    case "right":
       // Right side view: Look along X axis (YZ plane visible)
       position.set(target.x + distance, target.y, target.z)
       camera.up.set(0, 1, 0) // Standard up direction
+      break
+    // Legacy support for "side" (maps to right)
+    case "side":
+      position.set(target.x + distance, target.y, target.z)
+      camera.up.set(0, 1, 0)
       break
     case "isometric": {
       // Isometric: 45° angle from all three axes
@@ -632,4 +730,168 @@ export function fitCameraToScene(camera: THREE.Camera, controls: any, scene: THR
   camera.lookAt(center)
 
   return box
+}
+
+// Create 4D connection lines between devices with the same logicalEquipmentId
+export function create4DConnectionLines(
+  sceneObjects: SceneObjects,
+  sceneConfig: SceneConfig,
+): THREE.Group {
+  const linesGroup = new THREE.Group()
+  linesGroup.name = "4d-connection-lines"
+  linesGroup.userData.type = "4d-lines"
+
+  // Group devices by logicalEquipmentId
+  const devicesByLogicalId = new Map<string, string[]>()
+  sceneConfig.devices.forEach((device) => {
+    if (!devicesByLogicalId.has(device.logicalEquipmentId)) {
+      devicesByLogicalId.set(device.logicalEquipmentId, [])
+    }
+    devicesByLogicalId.get(device.logicalEquipmentId)!.push(device.id)
+  })
+
+  // Create lines between related devices
+  devicesByLogicalId.forEach((deviceIds, logicalId) => {
+    if (deviceIds.length < 2) return // No connection needed for single devices
+
+    // Get world positions of all related devices
+    const positions: THREE.Vector3[] = []
+    deviceIds.forEach((deviceId) => {
+      const deviceGroup = sceneObjects.devices.get(deviceId)
+      if (deviceGroup) {
+        const worldPos = new THREE.Vector3()
+        deviceGroup.getWorldPosition(worldPos)
+        // Offset slightly above the device center
+        worldPos.y += 0.1
+        positions.push(worldPos)
+      }
+    })
+
+    if (positions.length < 2) return
+
+    // Create curved lines between consecutive positions
+    for (let i = 0; i < positions.length - 1; i++) {
+      const start = positions[i]
+      const end = positions[i + 1]
+
+      // Create a curved path between points
+      const midPoint = new THREE.Vector3().lerpVectors(start, end, 0.5)
+      midPoint.y += Math.max(1, start.distanceTo(end) * 0.3) // Arc height
+
+      const curve = new THREE.QuadraticBezierCurve3(start, midPoint, end)
+      const points = curve.getPoints(20)
+
+      const geometry = new THREE.BufferGeometry().setFromPoints(points)
+      
+      // Gradient color based on 4D status
+      const lineMaterial = new THREE.LineBasicMaterial({
+        color: 0x00ffff,
+        transparent: true,
+        opacity: 0.7,
+        linewidth: 2,
+      })
+
+      const line = new THREE.Line(geometry, lineMaterial)
+      line.userData = { 
+        type: "4d-connection",
+        logicalEquipmentId: logicalId,
+        deviceIds: [deviceIds[i], deviceIds[i + 1]]
+      }
+      linesGroup.add(line)
+
+      // Add small spheres at connection points
+      const sphereGeometry = new THREE.SphereGeometry(0.03, 8, 8)
+      const sphereMaterial = new THREE.MeshBasicMaterial({
+        color: 0x00ffff,
+        transparent: true,
+        opacity: 0.8,
+      })
+      
+      const startSphere = new THREE.Mesh(sphereGeometry, sphereMaterial)
+      startSphere.position.copy(start)
+      linesGroup.add(startSphere)
+
+      if (i === positions.length - 2) {
+        const endSphere = new THREE.Mesh(sphereGeometry, sphereMaterial)
+        endSphere.position.copy(end)
+        linesGroup.add(endSphere)
+      }
+    }
+  })
+
+  return linesGroup
+}
+
+// Update visibility of 4D connection lines
+export function update4DLinesVisibility(linesGroup: THREE.Group, visible: boolean) {
+  linesGroup.visible = visible
+}
+
+// Highlight lines connected to a specific device
+export function highlight4DLines(
+  linesGroup: THREE.Group,
+  selectedDeviceId: string | null,
+  logicalEquipmentId: string | null
+) {
+  linesGroup.traverse((child) => {
+    if (child instanceof THREE.Line && child.userData.type === "4d-connection") {
+      const isRelated = logicalEquipmentId && 
+        child.userData.logicalEquipmentId === logicalEquipmentId
+      
+      const material = child.material as THREE.LineBasicMaterial
+      if (isRelated) {
+        material.color.setHex(0xffff00) // Yellow for highlighted
+        material.opacity = 1
+      } else {
+        material.color.setHex(0x00ffff) // Cyan for normal
+        material.opacity = selectedDeviceId ? 0.2 : 0.7 // Dim when something is selected
+      }
+    } else if (child instanceof THREE.Mesh && child.geometry instanceof THREE.SphereGeometry) {
+      const material = child.material as THREE.MeshBasicMaterial
+      material.opacity = selectedDeviceId && !logicalEquipmentId ? 0.2 : 0.8
+    }
+  })
+}
+
+// Get all device IDs that share the same logicalEquipmentId
+export function getRelatedDeviceIds(
+  sceneConfig: SceneConfig,
+  deviceId: string
+): string[] {
+  const device = sceneConfig.devices.find(d => d.id === deviceId)
+  if (!device) return []
+
+  return sceneConfig.devices
+    .filter(d => d.logicalEquipmentId === device.logicalEquipmentId)
+    .map(d => d.id)
+}
+
+// Highlight related devices (same logicalEquipmentId)
+export function highlightRelatedDevices(
+  sceneObjects: SceneObjects,
+  relatedDeviceIds: string[],
+  selectedDeviceId: string | null
+) {
+  sceneObjects.devices.forEach((deviceGroup, deviceId) => {
+    const isRelated = relatedDeviceIds.includes(deviceId)
+    const isSelected = deviceId === selectedDeviceId
+
+    deviceGroup.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const materials = Array.isArray(child.material) ? child.material : [child.material]
+        materials.forEach((mat) => {
+          if (isSelected) {
+            mat.emissive.setHex(0xffff00) // Yellow for selected
+            mat.emissiveIntensity = 0.5
+          } else if (isRelated) {
+            mat.emissive.setHex(0x00ffff) // Cyan for related
+            mat.emissiveIntensity = 0.4
+          } else {
+            mat.emissive.setHex(0x000000)
+            mat.emissiveIntensity = 0
+          }
+        })
+      }
+    })
+  })
 }

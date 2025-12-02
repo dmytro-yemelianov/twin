@@ -1,12 +1,15 @@
 import { estimateStoredBytes, generateId, readJSON, requireClientStorage, writeJSON, StorageQuotaExceededError } from "./storage"
 
+type FileCategory = "drawing" | "document" | "geometry" | "model" | "other"
+type GeometryFormat = "glb" | "gltf" | "obj"
+
 export interface UploadedFile {
   id: string
   name: string
   type: string
   size: number
   uploadedAt: string
-  category: "drawing" | "document" | "geometry" | "model" | "other"
+  category: FileCategory
   data: string // base64 or blob URL
   metadata?: {
     siteId?: string
@@ -17,7 +20,7 @@ export interface UploadedFile {
 
 export interface GeometryFile extends UploadedFile {
   category: "geometry"
-  format: "glb" | "gltf" | "obj"
+  format: GeometryFormat
 }
 
 export interface ModelFile extends UploadedFile {
@@ -72,7 +75,7 @@ function sanitizeUploadedFile(record: unknown): UploadedFile | null {
     return null
   }
 
-  if (!FILE_CATEGORIES.has(raw.category)) {
+  if (!FILE_CATEGORIES.has(raw.category as FileCategory)) {
     return null
   }
 
@@ -82,7 +85,7 @@ function sanitizeUploadedFile(record: unknown): UploadedFile | null {
     type: typeof raw.type === "string" ? raw.type : "application/octet-stream",
     size: typeof raw.size === "number" ? raw.size : Number(raw.size) || 0,
     uploadedAt: typeof raw.uploadedAt === "string" ? raw.uploadedAt : new Date().toISOString(),
-    category: raw.category,
+    category: raw.category as FileCategory,
     data: raw.data,
     metadata: sanitizeMetadata(raw.metadata),
   }
@@ -95,14 +98,14 @@ function sanitizeGeometryFile(record: unknown): GeometryFile | null {
   }
 
   const raw = record as Record<string, any>
-  if (typeof raw.format !== "string" || !GEOMETRY_FORMATS.has(raw.format)) {
+  if (typeof raw.format !== "string" || !GEOMETRY_FORMATS.has(raw.format as GeometryFormat)) {
     return null
   }
 
   return {
     ...base,
     category: "geometry",
-    format: raw.format,
+    format: raw.format as GeometryFormat,
   }
 }
 

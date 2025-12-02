@@ -1,7 +1,9 @@
 import type { Rack, SceneConfig, AICapacitySuggestion, Phase } from "./types"
 import { phaseVisibilityMap } from "./types"
+import { memoize } from "./utils/memoization"
 
-export function findAIReadyCapacity(sceneConfig: SceneConfig, currentPhase: Phase): AICapacitySuggestion | null {
+// Create memoized version of the AI capacity calculation
+function _findAIReadyCapacity(sceneConfig: SceneConfig, currentPhase: Phase): AICapacitySuggestion | null {
   const { racks, devices } = sceneConfig
   const allowedStatuses = new Set(phaseVisibilityMap[currentPhase])
 
@@ -82,3 +84,23 @@ export function findAIReadyCapacity(sceneConfig: SceneConfig, currentPhase: Phas
 
   return bestBlock
 }
+
+// Export memoized version with custom key function
+export const findAIReadyCapacity = memoize(
+  _findAIReadyCapacity,
+  (sceneConfig: SceneConfig, currentPhase: Phase) => {
+    // Create a cache key based on relevant scene data
+    const rackFingerprint = sceneConfig.racks
+      .map(r => `${r.id}:${r.uHeight}:${r.powerKwLimit}:${r.currentPowerKw}`)
+      .sort()
+      .join('|')
+    
+    const deviceFingerprint = sceneConfig.devices
+      .map(d => `${d.id}:${d.rackId}:${d.uHeight}:${d.status4D}`)
+      .sort()
+      .join('|')
+    
+    return `${currentPhase}:${rackFingerprint}:${deviceFingerprint}`
+  },
+  50 // Cache up to 50 different configurations
+)

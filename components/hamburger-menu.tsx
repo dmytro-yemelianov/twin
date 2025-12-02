@@ -2,8 +2,10 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet"
+import { Separator } from "@/components/ui/separator"
 import { Menu, Map, FileText, Package, Building2 } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 type ViewTarget = "twin" | "map" | "documents" | "models"
 
@@ -38,6 +40,7 @@ export function HamburgerMenu({ onNavigate, currentView }: HamburgerMenuProps) {
       <SheetContent side="left" className="w-full sm:w-96">
         <SheetHeader>
           <SheetTitle>Navigation</SheetTitle>
+          <SheetDescription>Navigate between different views</SheetDescription>
         </SheetHeader>
         <div className="mt-6 space-y-2">
           {menuItems.map((item) => {
@@ -55,6 +58,11 @@ export function HamburgerMenu({ onNavigate, currentView }: HamburgerMenuProps) {
               </Button>
             )
           })}
+        </div>
+        <Separator className="my-4" />
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground px-2 mb-2">Appearance</p>
+          <ThemeToggle variant="full" className="w-full" />
         </div>
       </SheetContent>
     </Sheet>

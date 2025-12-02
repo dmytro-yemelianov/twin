@@ -7,7 +7,7 @@ export type ColorMode = "4D_STATUS" | "CUSTOMER" | "POWER"
 
 export type SiteStatus = "AI_READY" | "IN_PROGRESS" | "LEGACY"
 
-export type DeviceCategory = "RACK" | "SERVER" | "SWITCH" | "STORAGE" | "NETWORK"
+export type DeviceCategory = "RACK" | "SERVER" | "SWITCH" | "STORAGE" | "NETWORK" | "GPU_SERVER" | "PDU" | "UPS" | "BLADE"
 
 // Transform Types
 export interface Transform {
@@ -37,6 +37,9 @@ export interface DeviceType {
   uHeight: number
   name?: string
   description?: string
+  powerKw?: number
+  btuHr?: number
+  gpuSlots?: number
 }
 
 // Scene Config Types
@@ -64,10 +67,31 @@ export interface Rack {
 
 export interface Room {
   id: string
+  floorId?: string // optional for backward compatibility
   name: string
   transformInBuilding: Transform
+  area?: number // square meters
 }
 
+export interface Floor {
+  id: string
+  buildingId: string
+  name: string
+  level: number // floor number (0 = ground, -1 = basement, etc.)
+  elevation?: number // height in meters
+}
+
+export interface BuildingInfo {
+  id: string
+  siteId: string
+  name: string
+  glbUri: string
+  transformWorld: Transform
+  floors?: number
+  area?: number // square meters
+}
+
+// Legacy Building type for backward compatibility
 export interface Building {
   glbUri: string
   transformWorld: Transform
@@ -76,9 +100,23 @@ export interface Building {
 export interface SceneConfig {
   siteId: string
   building: Building
+  buildings?: BuildingInfo[]
+  floors?: Floor[]
   rooms: Room[]
   racks: Rack[]
   devices: Device[]
+}
+
+// Hierarchy node types for navigation
+export type HierarchyNodeType = 'region' | 'site' | 'building' | 'floor' | 'room' | 'rack' | 'device'
+
+export interface HierarchyNode {
+  id: string
+  type: HierarchyNodeType
+  name: string
+  parentId: string | null
+  children?: string[]
+  data?: any
 }
 
 // Phase Visibility Map
