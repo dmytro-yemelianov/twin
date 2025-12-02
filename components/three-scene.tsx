@@ -134,6 +134,15 @@ interface TooltipData {
   y: number
 }
 
+interface OffScreenIndicator {
+  id: string
+  name: string
+  x: number  // Edge position X in pixels
+  y: number  // Edge position Y in pixels
+  angle: number  // Rotation angle for arrow in degrees
+  edge: 'top' | 'bottom' | 'left' | 'right'
+}
+
 interface ThreeSceneProps {
   sceneConfig: SceneConfig
   deviceTypes: DeviceType[]
@@ -198,6 +207,7 @@ export function ThreeScene({
   const viewHelperRef = useRef<ViewHelper | null>(null)
   const viewHelperContainerRef = useRef<HTMLDivElement | null>(null)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
+  const [offScreenIndicators, setOffScreenIndicators] = useState<OffScreenIndicator[]>([])
   const hoveredObjectRef = useRef<THREE.Object3D | null>(null)
 
   // Initialize Three.js scene
@@ -366,6 +376,106 @@ export function ThreeScene({
     
     renderer.domElement.addEventListener('click', handleViewHelperClick)
 
+    // Helper to calculate off-screen indicator position
+    const calculateOffScreenIndicators = (): OffScreenIndicator[] => {
+      if (!sceneObjectsRef.current) return []
+      
+      const indicators: OffScreenIndicator[] = []
+      const { racks } = sceneObjectsRef.current
+      const frustum = new THREE.Frustum()
+      const projScreenMatrix = new THREE.Matrix4()
+      
+      projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+      frustum.setFromProjectionMatrix(projScreenMatrix)
+      
+      const containerWidth = container.clientWidth
+      const containerHeight = container.clientHeight
+      const padding = 50 // Padding from edges
+      
+      racks.forEach((rackGroup, rackId) => {
+        // Get rack center position
+        const box = new THREE.Box3().setFromObject(rackGroup)
+        const center = box.getCenter(new THREE.Vector3())
+        
+        // Check if rack is in frustum
+        if (!frustum.containsPoint(center)) {
+          // Project to screen space
+          const screenPos = center.clone().project(camera)
+          
+          // Convert to pixel coordinates
+          let screenX = (screenPos.x + 1) / 2 * containerWidth
+          let screenY = (-screenPos.y + 1) / 2 * containerHeight
+          
+          // Skip if behind camera
+          if (screenPos.z > 1) {
+            screenX = containerWidth - screenX
+            screenY = containerHeight - screenY
+          }
+          
+          // Determine edge and clamp position
+          let edge: 'top' | 'bottom' | 'left' | 'right' = 'top'
+          let clampedX = screenX
+          let clampedY = screenY
+          
+          // Calculate which edge the indicator should appear on
+          const centerX = containerWidth / 2
+          const centerY = containerHeight / 2
+          const dx = screenX - centerX
+          const dy = screenY - centerY
+          
+          // Calculate slope to determine which edge
+          const slope = Math.abs(dy / (dx || 0.001))
+          const aspectRatio = containerHeight / containerWidth
+          
+          if (slope > aspectRatio) {
+            // Top or bottom edge
+            if (dy < 0) {
+              edge = 'top'
+              clampedY = padding
+              clampedX = centerX + dx * (padding - centerY) / dy
+            } else {
+              edge = 'bottom'
+              clampedY = containerHeight - padding
+              clampedX = centerX + dx * (containerHeight - padding - centerY) / dy
+            }
+          } else {
+            // Left or right edge
+            if (dx < 0) {
+              edge = 'left'
+              clampedX = padding
+              clampedY = centerY + dy * (padding - centerX) / dx
+            } else {
+              edge = 'right'
+              clampedX = containerWidth - padding
+              clampedY = centerY + dy * (containerWidth - padding - centerX) / dx
+            }
+          }
+          
+          // Clamp to bounds
+          clampedX = Math.max(padding, Math.min(containerWidth - padding, clampedX))
+          clampedY = Math.max(padding, Math.min(containerHeight - padding, clampedY))
+          
+          // Calculate angle pointing toward the rack
+          const angle = Math.atan2(screenY - clampedY, screenX - clampedX) * (180 / Math.PI)
+          
+          indicators.push({
+            id: rackId,
+            name: rackGroup.userData.data?.name || rackId,
+            x: clampedX,
+            y: clampedY,
+            angle,
+            edge,
+          })
+        }
+      })
+      
+      return indicators
+    }
+    
+    // Throttle off-screen indicator updates
+    let lastIndicatorUpdate = 0
+    const indicatorUpdateInterval = 100 // Update every 100ms
+
     // Animation loop
     let animationId: number
     const clock = new THREE.Clock()
@@ -383,6 +493,14 @@ export function ThreeScene({
 
       // Animate selection bounding boxes
       animateSelectionBoxes(elapsed)
+      
+      // Update off-screen indicators (throttled)
+      const now = performance.now()
+      if (now - lastIndicatorUpdate > indicatorUpdateInterval) {
+        lastIndicatorUpdate = now
+        const newIndicators = calculateOffScreenIndicators()
+        setOffScreenIndicators(newIndicators)
+      }
       
       renderer.render(scene, camera)
       
@@ -867,6 +985,71 @@ export function ThreeScene({
 
   return (
     <div ref={containerRef} className="w-full h-full relative">
+      {/* Off-screen rack indicators */}
+      {offScreenIndicators.map((indicator) => (
+        <div
+          key={indicator.id}
+          className="absolute z-40 pointer-events-auto cursor-pointer group"
+          style={{
+            left: indicator.x,
+            top: indicator.y,
+            transform: 'translate(-50%, -50%)',
+          }}
+          onClick={() => {
+            // Focus camera on this rack when clicked
+            if (sceneObjectsRef.current && cameraRef.current && controlsRef.current) {
+              const rackGroup = sceneObjectsRef.current.racks.get(indicator.id)
+              if (rackGroup) {
+                onRackSelect?.(indicator.id)
+                focusCameraOnRack(cameraRef.current, controlsRef.current, rackGroup)
+              }
+            }
+          }}
+          title={`Go to ${indicator.name}`}
+        >
+          {/* Arrow indicator */}
+          <div 
+            className="relative"
+            style={{ transform: `rotate(${indicator.angle}deg)` }}
+          >
+            <svg 
+              width="32" 
+              height="32" 
+              viewBox="0 0 32 32" 
+              className="drop-shadow-lg"
+            >
+              {/* Arrow shape */}
+              <path
+                d="M16 4 L28 16 L22 16 L22 28 L10 28 L10 16 L4 16 Z"
+                fill={resolvedTheme === 'light' ? '#22c55e' : '#4ade80'}
+                stroke={resolvedTheme === 'light' ? '#15803d' : '#166534'}
+                strokeWidth="1.5"
+                className="group-hover:fill-emerald-400 transition-colors"
+              />
+            </svg>
+          </div>
+          {/* Rack name label */}
+          <div 
+            className="absolute whitespace-nowrap text-[10px] font-medium px-1.5 py-0.5 rounded shadow-sm"
+            style={{
+              left: '50%',
+              top: indicator.edge === 'top' ? '100%' : indicator.edge === 'bottom' ? 'auto' : '50%',
+              bottom: indicator.edge === 'bottom' ? '100%' : 'auto',
+              transform: indicator.edge === 'left' || indicator.edge === 'right' 
+                ? 'translate(-50%, -50%)' 
+                : 'translateX(-50%)',
+              marginTop: indicator.edge === 'top' ? '4px' : 0,
+              marginBottom: indicator.edge === 'bottom' ? '4px' : 0,
+              backgroundColor: resolvedTheme === 'light' ? 'rgba(255,255,255,0.95)' : 'rgba(24,24,27,0.95)',
+              color: resolvedTheme === 'light' ? '#166534' : '#4ade80',
+              border: `1px solid ${resolvedTheme === 'light' ? 'rgba(22,101,52,0.3)' : 'rgba(74,222,128,0.3)'}`,
+            }}
+          >
+            {indicator.name}
+          </div>
+        </div>
+      ))}
+      
       {/* Tooltip overlay */}
       {tooltip && (
         <div 
