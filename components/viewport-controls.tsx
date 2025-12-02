@@ -38,7 +38,7 @@ export function ViewportControls({
   ]
 
   return (
-    <div className="absolute top-4 right-4 z-20 flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
         {/* 3D Navigation Cube */}
         <div className="grid grid-cols-3 grid-rows-3 gap-1 mb-3 relative">

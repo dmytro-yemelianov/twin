@@ -375,14 +375,16 @@ export function TwinViewer({ site }: TwinViewerProps) {
             value="scene"
             className="flex-1 min-h-0 flex flex-col gap-4 mt-0 data-[state=active]:flex relative"
           >
-            <ViewportControls
-              onResetCamera={() => setResetCameraTrigger((prev) => prev + 1)}
-              onFitView={() => setFitViewTrigger((prev) => prev + 1)}
-              onSetView={(view) => setSetViewTrigger({ view, timestamp: Date.now() })}
-              onZoomIn={() => setZoomInTrigger((prev) => prev + 1)}
-              onZoomOut={() => setZoomOutTrigger((prev) => prev + 1)}
-              currentView={currentCameraView}
-            />
+            <div className="absolute bottom-4 right-4 z-20">
+              <ViewportControls
+                onResetCamera={() => setResetCameraTrigger((prev) => prev + 1)}
+                onFitView={() => setFitViewTrigger((prev) => prev + 1)}
+                onSetView={(view) => setSetViewTrigger({ view, timestamp: Date.now() })}
+                onZoomIn={() => setZoomInTrigger((prev) => prev + 1)}
+                onZoomOut={() => setZoomOutTrigger((prev) => prev + 1)}
+                currentView={currentCameraView}
+              />
+            </div>
 
             <div className="flex-1 min-h-0 w-full">
               <ThreeScene

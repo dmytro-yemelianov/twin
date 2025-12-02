@@ -721,7 +721,7 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
               )}
 
               {/* Viewport Controls */}
-              <div className="absolute bottom-4 right-4">
+              <div className="absolute bottom-4 right-4 z-20">
                 <ViewportControls
                   currentView={currentView}
                   onResetCamera={handleResetCamera}
