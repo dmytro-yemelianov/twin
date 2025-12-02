@@ -376,56 +376,62 @@ export function ThreeScene({
     
     renderer.domElement.addEventListener('click', handleViewHelperClick)
 
+    // Reusable objects for off-screen calculation (avoid GC pressure)
+    const frustum = new THREE.Frustum()
+    const projScreenMatrix = new THREE.Matrix4()
+    const tempBox = new THREE.Box3()
+    const tempCenter = new THREE.Vector3()
+    const tempScreenPos = new THREE.Vector3()
+    let lastIndicatorHash = ''
+    
     // Helper to calculate off-screen indicator position
-    const calculateOffScreenIndicators = (): OffScreenIndicator[] => {
-      if (!sceneObjectsRef.current) return []
+    const calculateOffScreenIndicators = (): OffScreenIndicator[] | null => {
+      if (!sceneObjectsRef.current) return null
       
-      const indicators: OffScreenIndicator[] = []
       const { racks } = sceneObjectsRef.current
-      const frustum = new THREE.Frustum()
-      const projScreenMatrix = new THREE.Matrix4()
+      const containerWidth = container.clientWidth
+      const containerHeight = container.clientHeight
       
+      if (containerWidth === 0 || containerHeight === 0) return null
+      
+      // Update frustum from camera
+      camera.updateMatrixWorld()
       projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
       frustum.setFromProjectionMatrix(projScreenMatrix)
       
-      const containerWidth = container.clientWidth
-      const containerHeight = container.clientHeight
-      const padding = 50 // Padding from edges
+      const indicators: OffScreenIndicator[] = []
+      const padding = 40
+      const centerX = containerWidth / 2
+      const centerY = containerHeight / 2
+      const aspectRatio = containerHeight / containerWidth
       
       racks.forEach((rackGroup, rackId) => {
-        // Get rack center position
-        const box = new THREE.Box3().setFromObject(rackGroup)
-        const center = box.getCenter(new THREE.Vector3())
+        // Get rack center position (reuse objects)
+        tempBox.setFromObject(rackGroup)
+        tempBox.getCenter(tempCenter)
         
-        // Check if rack is in frustum
-        if (!frustum.containsPoint(center)) {
-          // Project to screen space
-          const screenPos = center.clone().project(camera)
-          
-          // Convert to pixel coordinates
-          let screenX = (screenPos.x + 1) / 2 * containerWidth
-          let screenY = (-screenPos.y + 1) / 2 * containerHeight
+        // Check if rack center is in frustum
+        if (!frustum.containsPoint(tempCenter)) {
+          // Project to screen space (reuse object)
+          tempScreenPos.copy(tempCenter).project(camera)
           
           // Skip if behind camera
-          if (screenPos.z > 1) {
-            screenX = containerWidth - screenX
-            screenY = containerHeight - screenY
-          }
+          if (tempScreenPos.z > 1) return
           
-          // Determine edge and clamp position
-          let edge: 'top' | 'bottom' | 'left' | 'right' = 'top'
-          let clampedX = screenX
-          let clampedY = screenY
+          // Convert to pixel coordinates
+          const screenX = (tempScreenPos.x + 1) / 2 * containerWidth
+          const screenY = (-tempScreenPos.y + 1) / 2 * containerHeight
           
-          // Calculate which edge the indicator should appear on
-          const centerX = containerWidth / 2
-          const centerY = containerHeight / 2
+          // Calculate direction from center
           const dx = screenX - centerX
           const dy = screenY - centerY
           
-          // Calculate slope to determine which edge
+          // Determine edge and clamp position
+          let edge: 'top' | 'bottom' | 'left' | 'right'
+          let clampedX: number
+          let clampedY: number
+          
           const slope = Math.abs(dy / (dx || 0.001))
-          const aspectRatio = containerHeight / containerWidth
           
           if (slope > aspectRatio) {
             // Top or bottom edge
@@ -455,26 +461,32 @@ export function ThreeScene({
           clampedX = Math.max(padding, Math.min(containerWidth - padding, clampedX))
           clampedY = Math.max(padding, Math.min(containerHeight - padding, clampedY))
           
-          // Calculate angle pointing toward the rack
+          // Calculate angle: arrow points FROM indicator TO rack
+          // SVG arrow points right (0°), so we calculate angle to target
           const angle = Math.atan2(screenY - clampedY, screenX - clampedX) * (180 / Math.PI)
           
           indicators.push({
             id: rackId,
             name: rackGroup.userData.data?.name || rackId,
-            x: clampedX,
-            y: clampedY,
-            angle,
+            x: Math.round(clampedX),
+            y: Math.round(clampedY),
+            angle: Math.round(angle),
             edge,
           })
         }
       })
       
+      // Check if indicators changed (simple hash comparison)
+      const newHash = indicators.map(i => `${i.id}:${i.x}:${i.y}`).join('|')
+      if (newHash === lastIndicatorHash) return null
+      lastIndicatorHash = newHash
+      
       return indicators
     }
     
-    // Throttle off-screen indicator updates
+    // Throttle off-screen indicator updates - much longer interval
     let lastIndicatorUpdate = 0
-    const indicatorUpdateInterval = 100 // Update every 100ms
+    const indicatorUpdateInterval = 250 // Update every 250ms (was 100ms)
 
     // Animation loop
     let animationId: number
@@ -494,12 +506,14 @@ export function ThreeScene({
       // Animate selection bounding boxes
       animateSelectionBoxes(elapsed)
       
-      // Update off-screen indicators (throttled)
+      // Update off-screen indicators (throttled and only when changed)
       const now = performance.now()
       if (now - lastIndicatorUpdate > indicatorUpdateInterval) {
         lastIndicatorUpdate = now
         const newIndicators = calculateOffScreenIndicators()
-        setOffScreenIndicators(newIndicators)
+        if (newIndicators !== null) {
+          setOffScreenIndicators(newIndicators)
+        }
       }
       
       renderer.render(scene, camera)
@@ -1007,23 +1021,23 @@ export function ThreeScene({
           }}
           title={`Go to ${indicator.name}`}
         >
-          {/* Arrow indicator */}
+          {/* Arrow indicator - points right at 0°, rotated to point at rack */}
           <div 
             className="relative"
             style={{ transform: `rotate(${indicator.angle}deg)` }}
           >
             <svg 
-              width="32" 
-              height="32" 
-              viewBox="0 0 32 32" 
-              className="drop-shadow-lg"
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              className="drop-shadow-md"
             >
-              {/* Arrow shape */}
+              {/* Arrow pointing right → */}
               <path
-                d="M16 4 L28 16 L22 16 L22 28 L10 28 L10 16 L4 16 Z"
+                d="M4 12 L16 12 L16 8 L22 12 L16 16 L16 12 L4 12 Z"
                 fill={resolvedTheme === 'light' ? '#22c55e' : '#4ade80'}
                 stroke={resolvedTheme === 'light' ? '#15803d' : '#166534'}
-                strokeWidth="1.5"
+                strokeWidth="1"
                 className="group-hover:fill-emerald-400 transition-colors"
               />
             </svg>
