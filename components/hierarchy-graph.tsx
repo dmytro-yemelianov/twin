@@ -474,122 +474,144 @@ export function HierarchyGraph({
 
   // Handle collapse/expand visibility
   useEffect(() => {
-    if (!cyRef.current) return
     const cy = cyRef.current
+    if (!cy || cy.destroyed()) return
 
-    // First, show all nodes and edges
-    cy.nodes().removeClass('hidden collapsed')
-    cy.edges().removeClass('hidden')
+    try {
+      // First, show all nodes and edges
+      cy.nodes().removeClass('hidden collapsed')
+      cy.edges().removeClass('hidden')
 
-    // For each collapsed node, hide its descendants
-    collapsedNodes.forEach(collapsedId => {
-      const node = cy.getElementById(collapsedId)
-      if (node.length > 0) {
-        node.addClass('collapsed')
-        
-        // Hide all descendants
-        const descendants = getDescendants(collapsedId)
-        descendants.forEach(descId => {
-          cy.getElementById(descId).addClass('hidden')
-        })
-        
-        // Hide edges to/from hidden nodes
-        cy.edges().forEach(edge => {
-          const sourceHidden = cy.getElementById(edge.data('source')).hasClass('hidden')
-          const targetHidden = cy.getElementById(edge.data('target')).hasClass('hidden')
-          if (sourceHidden || targetHidden) {
-            edge.addClass('hidden')
-          }
-        })
+      // For each collapsed node, hide its descendants
+      collapsedNodes.forEach(collapsedId => {
+        const node = cy.getElementById(collapsedId)
+        if (node.length > 0) {
+          node.addClass('collapsed')
+          
+          // Hide all descendants
+          const descendants = getDescendants(collapsedId)
+          descendants.forEach(descId => {
+            cy.getElementById(descId).addClass('hidden')
+          })
+          
+          // Hide edges to/from hidden nodes
+          cy.edges().forEach(edge => {
+            const sourceHidden = cy.getElementById(edge.data('source')).hasClass('hidden')
+            const targetHidden = cy.getElementById(edge.data('target')).hasClass('hidden')
+            if (sourceHidden || targetHidden) {
+              edge.addClass('hidden')
+            }
+          })
+        }
+      })
+
+      // Re-run layout after visibility changes (with animation) only if collapsed nodes changed
+      if (collapsedNodes.size > 0) {
+        cy.layout({
+          name: 'cose',
+          animate: true,
+          animationDuration: 300,
+          padding: 60,
+          fit: false,
+        }).run()
       }
-    })
-
-    // Re-run layout after visibility changes (with animation)
-    cy.layout({
-      name: 'cose',
-      animate: true,
-      animationDuration: 300,
-      padding: 60,
-      fit: false,
-    }).run()
+    } catch (e) {
+      console.warn('Collapse effect error:', e)
+    }
   }, [collapsedNodes, getDescendants])
 
   // Update selected node styling
   useEffect(() => {
-    if (!cyRef.current) return
     const cy = cyRef.current
+    if (!cy || cy.destroyed()) return
 
-    cy.nodes().forEach((node) => {
-      if (!node.hasClass('collapsed') && node.id() !== selectedNodeId) {
-        node.style({ 'border-width': 0 })
-      }
-    })
+    try {
+      cy.nodes().forEach((node) => {
+        if (!node.hasClass('collapsed') && node.id() !== selectedNodeId) {
+          node.style({ 'border-width': 0 })
+        }
+      })
 
-    if (selectedNodeId) {
-      const selectedNode = cy.getElementById(selectedNodeId)
-      if (selectedNode.length > 0) {
-        selectedNode.style({
-          'border-width': 3,
-          'border-color': colors.selectedBorder,
-        })
+      if (selectedNodeId) {
+        const selectedNode = cy.getElementById(selectedNodeId)
+        if (selectedNode.length > 0) {
+          selectedNode.style({
+            'border-width': 3,
+            'border-color': colors.selectedBorder,
+          })
+        }
       }
+    } catch (e) {
+      console.warn('Selection effect error:', e)
     }
   }, [selectedNodeId, colors])
 
   // Update icons on theme change
   useEffect(() => {
-    if (!cyRef.current) return
     const cy = cyRef.current
+    if (!cy || cy.destroyed()) return
 
-    if (containerRef.current) {
-      containerRef.current.style.backgroundColor = colors.background
-    }
+    try {
+      if (containerRef.current) {
+        containerRef.current.style.backgroundColor = colors.background
+      }
 
-    // Update node icons
-    const types = ['site', 'building', 'floor', 'room', 'rack', 'device']
-    types.forEach(type => {
-      cy.nodes(`[type="${type}"]`).forEach(node => {
-        const isCollapsed = collapsedNodes.has(node.id())
-        node.style({
-          'background-image': getIconUrl(type, isCollapsed),
-          'color': colors.text,
-          'text-outline-color': colors.background,
+      // Update node icons
+      const types = ['site', 'building', 'floor', 'room', 'rack', 'device']
+      types.forEach(type => {
+        cy.nodes(`[type="${type}"]`).forEach(node => {
+          const isCollapsed = collapsedNodes.has(node.id())
+          node.style({
+            'background-image': getIconUrl(type, isCollapsed),
+            'color': colors.text,
+            'text-outline-color': colors.background,
+          })
         })
       })
-    })
 
-    // Update edge colors
-    cy.edges().forEach((edge) => {
-      edge.style({
-        'line-color': colors.edge,
-        'target-arrow-color': colors.edge,
+      // Update edge colors
+      cy.edges().forEach((edge) => {
+        edge.style({
+          'line-color': colors.edge,
+          'target-arrow-color': colors.edge,
+        })
       })
-    })
+    } catch (e) {
+      console.warn('Theme effect error:', e)
+    }
   }, [colors, getIconUrl, collapsedNodes])
 
   // Control handlers
   const handleFitView = useCallback(() => {
-    cyRef.current?.fit(undefined, 60)
+    const cy = cyRef.current
+    if (cy && !cy.destroyed()) cy.fit(undefined, 60)
   }, [])
 
   const handleZoomIn = useCallback(() => {
-    if (!cyRef.current) return
-    cyRef.current.zoom(cyRef.current.zoom() * 1.3)
+    const cy = cyRef.current
+    if (!cy || cy.destroyed()) return
+    cy.zoom(cy.zoom() * 1.3)
   }, [])
 
   const handleZoomOut = useCallback(() => {
-    if (!cyRef.current) return
-    cyRef.current.zoom(cyRef.current.zoom() / 1.3)
+    const cy = cyRef.current
+    if (!cy || cy.destroyed()) return
+    cy.zoom(cy.zoom() / 1.3)
   }, [])
 
   const handleRelayout = useCallback(() => {
-    if (!cyRef.current) return
-    cyRef.current.layout({
-      name: 'cose',
-      animate: true,
-      animationDuration: 500,
-      padding: 60,
-    }).run()
+    const cy = cyRef.current
+    if (!cy || cy.destroyed()) return
+    try {
+      cy.layout({
+        name: 'cose',
+        animate: true,
+        animationDuration: 500,
+        padding: 60,
+      }).run()
+    } catch (e) {
+      console.warn('Relayout error:', e)
+    }
   }, [])
 
   const handleExpandAll = useCallback(() => {
