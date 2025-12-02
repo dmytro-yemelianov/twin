@@ -398,16 +398,12 @@ export function HierarchyGraph({
         },
       ],
       layout: {
-        name: 'breadthfirst',
-        directed: true,
+        name: 'cose',
+        animate: false,
         padding: 60,
-        spacingFactor: 1.4,
-        avoidOverlap: true,
-        roots: '#site-root',
       },
       minZoom: 0.15,
       maxZoom: 3,
-      wheelSensitivity: 0.3,
     })
 
     cyRef.current = cy
@@ -509,19 +505,13 @@ export function HierarchyGraph({
     })
 
     // Re-run layout after visibility changes (with animation)
-    if (collapsedNodes.size > 0 || true) {
-      cy.layout({
-        name: 'breadthfirst',
-        directed: true,
-        padding: 60,
-        spacingFactor: 1.4,
-        avoidOverlap: true,
-        roots: '#site-root',
-        animate: true,
-        animationDuration: 300,
-        fit: false,
-      }).run()
-    }
+    cy.layout({
+      name: 'cose',
+      animate: true,
+      animationDuration: 300,
+      padding: 60,
+      fit: false,
+    }).run()
   }, [collapsedNodes, getDescendants])
 
   // Update selected node styling
@@ -595,14 +585,10 @@ export function HierarchyGraph({
   const handleRelayout = useCallback(() => {
     if (!cyRef.current) return
     cyRef.current.layout({
-      name: 'breadthfirst',
-      directed: true,
-      padding: 60,
-      spacingFactor: 1.4,
-      avoidOverlap: true,
-      roots: '#site-root',
+      name: 'cose',
       animate: true,
       animationDuration: 500,
+      padding: 60,
     }).run()
   }, [])
 
