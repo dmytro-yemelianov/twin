@@ -128,6 +128,12 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
   const [triggerZoomIn, setTriggerZoomIn] = useState(0)
   const [triggerZoomOut, setTriggerZoomOut] = useState(0)
   
+  // Inventory panel resize state
+  const [inventoryHeight, setInventoryHeight] = useState(280)
+  const [isResizing, setIsResizing] = useState(false)
+  const minInventoryHeight = 150
+  const maxInventoryHeight = 500
+  
   // Device modification handler
   const handleDeviceModified = (updatedDevice: any) => {
     // In a real implementation, this would update the store/backend
@@ -139,6 +145,30 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
     selectDevice(deviceId)
     setShowEquipmentEditor(true)
     }
+
+  // Inventory panel resize handlers
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+    
+    const startY = e.clientY
+    const startHeight = inventoryHeight
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = startY - moveEvent.clientY
+      const newHeight = Math.min(maxInventoryHeight, Math.max(minInventoryHeight, startHeight + deltaY))
+      setInventoryHeight(newHeight)
+    }
+    
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
 
   // 3D View control handlers
   const handleResetCamera = () => {
@@ -643,8 +673,8 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
       </div>
 
       {/* Main Content with Tabs */}
-      <div className="flex-1 min-h-0 flex">
-        <div className="flex-1 min-w-0 relative">
+      <div className="flex-1 min-h-0 flex flex-col">
+        <div className="flex-1 min-h-0 relative">
           {currentTab === '3d' && (
             <>
               <ThreeScene
@@ -760,15 +790,33 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
           )}
         </div>
 
-        {/* Side Panel */}
-        {showInventory && (
-          <div className="w-96 border-l border-border/50 bg-card/50">
-            <InventoryPanelDynamic
-              sceneConfig={sceneConfig}
-              selectedDeviceId={selectedDeviceId}
-              onDeviceSelect={selectDevice}
-              onClose={() => setShowInventory(false)}
-            />
+        </div>
+        
+        {/* Bottom Inventory Panel with Resize */}
+        {showInventory && currentTab === '3d' && (
+          <div 
+            className="border-t border-border/50 bg-card/50 flex flex-col"
+            style={{ height: inventoryHeight }}
+          >
+            {/* Resize Handle */}
+            <div
+              className={`h-1.5 cursor-ns-resize hover:bg-primary/30 transition-colors flex items-center justify-center group ${
+                isResizing ? 'bg-primary/40' : 'bg-transparent'
+              }`}
+              onMouseDown={handleResizeStart}
+            >
+              <div className="w-12 h-0.5 bg-border group-hover:bg-primary/50 rounded-full" />
+            </div>
+            
+            {/* Panel Content */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <InventoryPanelDynamic
+                sceneConfig={sceneConfig}
+                selectedDeviceId={selectedDeviceId}
+                onDeviceSelect={selectDevice}
+                onClose={() => setShowInventory(false)}
+              />
+            </div>
           </div>
         )}
       </div>
