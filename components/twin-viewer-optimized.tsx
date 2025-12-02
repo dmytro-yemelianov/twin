@@ -117,7 +117,6 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
 
   // Local state for operational panels and 3D scene
   const [currentTab, setCurrentTab] = useState('3d')
-  const [currentView, setCurrentView] = useState('perspective')
   const [showOrigin, setShowOrigin] = useState(false)
   const [showCompass, setShowCompass] = useState(true)
   const [show4DLines, setShow4DLines] = useState(false)
@@ -128,7 +127,6 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
   const [triggerFitView, setTriggerFitView] = useState(0) 
   const [triggerZoomIn, setTriggerZoomIn] = useState(0)
   const [triggerZoomOut, setTriggerZoomOut] = useState(0)
-  const [triggerSetView, setTriggerSetView] = useState<{ view: string; timestamp: number } | null>(null)
   
   // Device modification handler
   const handleDeviceModified = (updatedDevice: any) => {
@@ -143,13 +141,7 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
     }
 
   // 3D View control handlers
-  const handleSetView = (view: string) => {
-    setCurrentView(view)
-    setTriggerSetView({ view, timestamp: Date.now() })
-  }
-
   const handleResetCamera = () => {
-    setCurrentView('perspective')
     setTriggerResetCamera(prev => prev + 1)
   }
 
@@ -676,7 +668,6 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
                 triggerFitView={triggerFitView}
                 triggerZoomIn={triggerZoomIn}
                 triggerZoomOut={triggerZoomOut}
-                triggerSetView={triggerSetView}
               />
 
               {/* Selected Device Edit Popup */}
@@ -723,12 +714,10 @@ export function TwinViewerOptimized({ site, sites = [], onSiteChange }: TwinView
               {/* Viewport Controls */}
               <div className="absolute bottom-4 right-4 z-20">
                 <ViewportControls
-                  currentView={currentView}
                   onResetCamera={handleResetCamera}
                   onFitView={handleFitView}
                   onZoomIn={handleZoomIn}
                   onZoomOut={handleZoomOut}
-                  onSetView={handleSetView}
                   onToggleOrigin={() => setShowOrigin(!showOrigin)}
                   onToggleCompass={() => setShowCompass(!showCompass)}
                   showOrigin={showOrigin}

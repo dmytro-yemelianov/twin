@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useTheme } from "next-themes"
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
+import { ViewHelper } from "three/examples/jsm/helpers/ViewHelper.js"
 import type { SceneConfig, DeviceType, Status4D, ColorMode } from "@/lib/types"
 import {
   buildScene,
@@ -194,6 +195,8 @@ export function ThreeScene({
   const compassRef = useRef<THREE.Group | null>(null)
   const connectionLinesRef = useRef<THREE.Group | null>(null)
   const gridHelperRef = useRef<THREE.GridHelper | null>(null)
+  const viewHelperRef = useRef<ViewHelper | null>(null)
+  const viewHelperContainerRef = useRef<HTMLDivElement | null>(null)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const hoveredObjectRef = useRef<THREE.Object3D | null>(null)
 
@@ -351,6 +354,39 @@ export function ThreeScene({
     scene.add(compass)
     compassRef.current = compass
 
+    // Create ViewHelper (CAD-style view cube)
+    const viewHelper = new ViewHelper(camera, renderer.domElement)
+    viewHelper.center.set(1, 1, 0) // Position in bottom-right corner
+    viewHelperRef.current = viewHelper
+    
+    // Handle ViewHelper click events
+    const handleViewHelperClick = (event: MouseEvent) => {
+      // Get the ViewHelper container bounds
+      const rect = renderer.domElement.getBoundingClientRect()
+      const viewHelperSize = 128 // ViewHelper default size
+      const margin = 16
+      
+      // Check if click is in the ViewHelper area (bottom-right corner)
+      const viewHelperX = rect.right - viewHelperSize - margin
+      const viewHelperY = rect.bottom - viewHelperSize - margin
+      
+      if (
+        event.clientX >= viewHelperX &&
+        event.clientX <= rect.right - margin &&
+        event.clientY >= viewHelperY &&
+        event.clientY <= rect.bottom - margin
+      ) {
+        // Convert click to ViewHelper space
+        const x = (event.clientX - viewHelperX) / viewHelperSize
+        const y = (event.clientY - viewHelperY) / viewHelperSize
+        
+        // Let ViewHelper handle the click
+        viewHelper.handleClick(event)
+      }
+    }
+    
+    renderer.domElement.addEventListener('click', handleViewHelperClick)
+
     // Animation loop
     let animationId: number
     const clock = new THREE.Clock()
@@ -359,11 +395,14 @@ export function ThreeScene({
       const elapsed = clock.getElapsedTime()
       
       controls.update()
-      
+
       // Animate selection bounding boxes
       animateSelectionBoxes(elapsed)
       
       renderer.render(scene, camera)
+      
+      // Render ViewHelper (must be after main render)
+      viewHelper.render(renderer)
     }
     animate()
 
@@ -548,7 +587,12 @@ export function ThreeScene({
       container.removeEventListener("click", handleClick)
       container.removeEventListener("mousemove", handleMouseMove)
       container.removeEventListener("mouseleave", handleMouseLeave)
+      renderer.domElement.removeEventListener('click', handleViewHelperClick)
       controls.dispose()
+      if (viewHelperRef.current) {
+        viewHelperRef.current.dispose()
+        viewHelperRef.current = null
+      }
       renderer.dispose()
       container.removeChild(renderer.domElement)
       if (sceneObjectsRef.current) {
