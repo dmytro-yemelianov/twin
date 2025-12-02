@@ -10,7 +10,6 @@ import {
   updateDeviceColor,
   highlightDevice,
   highlightRacks,
-  focusCameraOnDevice,
   focusCameraOnRack,
   updateBuildingTransparency,
   highlightRack,
@@ -734,13 +733,7 @@ export function ThreeScene({
       highlight4DLines(connectionLinesRef.current, selectedDeviceId, logicalEquipmentId)
     }
 
-      // Focus camera on selected device
-    if (selectedDeviceId) {
-      const deviceGroup = devices.get(selectedDeviceId)
-      if (deviceGroup && cameraRef.current && controlsRef.current) {
-        focusCameraOnDevice(cameraRef.current, controlsRef.current, deviceGroup)
-      }
-    }
+    // Note: Camera no longer auto-focuses on device selection to maintain user's view
   }, [selectedDeviceId, sceneConfig])
 
   useEffect(() => {
