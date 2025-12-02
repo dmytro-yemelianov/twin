@@ -85,34 +85,156 @@ function createTextSprite(text: string, options: {
   return sprite
 }
 
+// Create small U-position label sprite
+function createULabel(uNumber: number, isLightTheme = false): THREE.Sprite {
+  if (typeof document === 'undefined') {
+    return new THREE.Sprite(new THREE.SpriteMaterial())
+  }
+  
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')!
+  
+  canvas.width = 64
+  canvas.height = 32
+  
+  // Transparent background
+  context.clearRect(0, 0, canvas.width, canvas.height)
+  
+  // Draw text
+  context.font = 'bold 20px monospace'
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.fillStyle = isLightTheme ? '#666666' : '#888888'
+  context.fillText(`${uNumber}`, canvas.width / 2, canvas.height / 2)
+  
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.needsUpdate = true
+  
+  const spriteMaterial = new THREE.SpriteMaterial({ 
+    map: texture,
+    transparent: true,
+    depthTest: false,
+  })
+  
+  const sprite = new THREE.Sprite(spriteMaterial)
+  sprite.scale.set(0.2, 0.1, 1)
+  sprite.userData.type = 'u-label'
+  
+  return sprite
+}
+
 function createRackGeometry(uHeight: number): THREE.Group {
   const group = new THREE.Group()
 
-  // Rack dimensions (simplified)
+  // Rack dimensions
   const width = 0.6
   const depth = 1.0
   const height = (uHeight / 42) * 2.0 // 2 meters for 42U
+  const postSize = 0.03 // Thickness of frame posts
+  const railSize = 0.02 // Thickness of horizontal rails
 
-  // Rack frame
-  const frameGeometry = new THREE.BoxGeometry(width, height, depth)
+  // Frame material for posts
   const frameMaterial = new THREE.MeshStandardMaterial({
-    color: 0x333333,
-    metalness: 0.8,
-    roughness: 0.2,
-    transparent: true,
-    opacity: 0.2, // Semi-transparent so devices are visible
+    color: 0x444444,
+    metalness: 0.7,
+    roughness: 0.3,
   })
-  const frame = new THREE.Mesh(frameGeometry, frameMaterial)
-  frame.position.y = height / 2
 
-  // Add wireframe edges
-  const edges = new THREE.EdgesGeometry(frameGeometry)
-  const edgesMaterial = new THREE.LineBasicMaterial({ color: 0x666666 })
-  const wireframe = new THREE.LineSegments(edges, edgesMaterial)
-  wireframe.position.copy(frame.position)
+  // Create 4 vertical posts at corners
+  const postGeometry = new THREE.BoxGeometry(postSize, height, postSize)
+  const postPositions = [
+    [-width / 2 + postSize / 2, height / 2, -depth / 2 + postSize / 2], // Front-left
+    [width / 2 - postSize / 2, height / 2, -depth / 2 + postSize / 2],  // Front-right
+    [-width / 2 + postSize / 2, height / 2, depth / 2 - postSize / 2],  // Back-left
+    [width / 2 - postSize / 2, height / 2, depth / 2 - postSize / 2],   // Back-right
+  ]
 
-  group.add(frame)
-  group.add(wireframe)
+  postPositions.forEach((pos) => {
+    const post = new THREE.Mesh(postGeometry, frameMaterial)
+    post.position.set(pos[0], pos[1], pos[2])
+    group.add(post)
+  })
+
+  // Create horizontal rails at top and bottom
+  const frontBackRailGeometry = new THREE.BoxGeometry(width, railSize, railSize)
+  const sideRailGeometry = new THREE.BoxGeometry(railSize, railSize, depth)
+
+  // Bottom rails
+  const bottomY = railSize / 2
+  const bottomFrontRail = new THREE.Mesh(frontBackRailGeometry, frameMaterial)
+  bottomFrontRail.position.set(0, bottomY, -depth / 2 + railSize / 2)
+  group.add(bottomFrontRail)
+
+  const bottomBackRail = new THREE.Mesh(frontBackRailGeometry, frameMaterial)
+  bottomBackRail.position.set(0, bottomY, depth / 2 - railSize / 2)
+  group.add(bottomBackRail)
+
+  const bottomLeftRail = new THREE.Mesh(sideRailGeometry, frameMaterial)
+  bottomLeftRail.position.set(-width / 2 + railSize / 2, bottomY, 0)
+  group.add(bottomLeftRail)
+
+  const bottomRightRail = new THREE.Mesh(sideRailGeometry, frameMaterial)
+  bottomRightRail.position.set(width / 2 - railSize / 2, bottomY, 0)
+  group.add(bottomRightRail)
+
+  // Top rails
+  const topY = height - railSize / 2
+  const topFrontRail = new THREE.Mesh(frontBackRailGeometry, frameMaterial)
+  topFrontRail.position.set(0, topY, -depth / 2 + railSize / 2)
+  group.add(topFrontRail)
+
+  const topBackRail = new THREE.Mesh(frontBackRailGeometry, frameMaterial)
+  topBackRail.position.set(0, topY, depth / 2 - railSize / 2)
+  group.add(topBackRail)
+
+  const topLeftRail = new THREE.Mesh(sideRailGeometry, frameMaterial)
+  topLeftRail.position.set(-width / 2 + railSize / 2, topY, 0)
+  group.add(topLeftRail)
+
+  const topRightRail = new THREE.Mesh(sideRailGeometry, frameMaterial)
+  topRightRail.position.set(width / 2 - railSize / 2, topY, 0)
+  group.add(topRightRail)
+
+  // Add U-position labels on the left side
+  // Show labels at key positions: 1, then every 5U, and the top
+  const uToMeters = height / uHeight
+  const labelPositions: number[] = [1]
+  
+  for (let u = 5; u <= uHeight; u += 5) {
+    if (!labelPositions.includes(u)) {
+      labelPositions.push(u)
+    }
+  }
+  if (!labelPositions.includes(uHeight)) {
+    labelPositions.push(uHeight)
+  }
+
+  labelPositions.forEach((uPos) => {
+    const label = createULabel(uPos)
+    const yPosition = (uPos - 0.5) * uToMeters // Center of the U position
+    label.position.set(-width / 2 - 0.15, yPosition, -depth / 2)
+    label.userData.uPosition = uPos
+    group.add(label)
+  })
+
+  // Add thin mounting rail indicators on the front posts (visual guide for U positions)
+  const railIndicatorMaterial = new THREE.LineBasicMaterial({ 
+    color: 0x555555,
+    transparent: true,
+    opacity: 0.5 
+  })
+  
+  // Create horizontal lines for every 5U on front face
+  for (let u = 0; u <= uHeight; u += 5) {
+    const yPosition = u * uToMeters
+    const points = [
+      new THREE.Vector3(-width / 2 + postSize, yPosition, -depth / 2 + postSize / 2),
+      new THREE.Vector3(width / 2 - postSize, yPosition, -depth / 2 + postSize / 2),
+    ]
+    const geometry = new THREE.BufferGeometry().setFromPoints(points)
+    const line = new THREE.Line(geometry, railIndicatorMaterial)
+    group.add(line)
+  }
 
   return group
 }
