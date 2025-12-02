@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react"
 import { useTheme } from "next-themes"
-import cytoscape, { Core, NodeSingular, NodeCollection } from "cytoscape"
+import cytoscape, { Core } from "cytoscape"
 import type { SceneConfig } from "@/lib/types"
 
 interface HierarchyGraphProps {
@@ -95,6 +95,12 @@ export function HierarchyGraph({
 
   const colors = resolvedTheme === 'light' ? themeColors.light : themeColors.dark
 
+  // Guard for invalid sceneConfig
+  const hasValidConfig = sceneConfig && 
+    Array.isArray(sceneConfig.rooms) && 
+    Array.isArray(sceneConfig.racks) && 
+    Array.isArray(sceneConfig.devices)
+
   // Generate icon URLs
   const getIconUrl = useCallback((type: string, isCollapsed: boolean = false) => {
     const iconColor = '#ffffff'
@@ -110,6 +116,11 @@ export function HierarchyGraph({
     const nodes: cytoscape.ElementDefinition[] = []
     const edges: cytoscape.ElementDefinition[] = []
     const childrenMap = new Map<string, string[]>()
+    
+    // Return empty if no valid config
+    if (!hasValidConfig) {
+      return { nodes, edges, childrenMap }
+    }
     
     // Helper to track children
     const addChild = (parentId: string, childId: string) => {
@@ -230,7 +241,7 @@ export function HierarchyGraph({
     })
 
     return { nodes, edges, childrenMap }
-  }, [sceneConfig, siteName])
+  }, [sceneConfig, siteName, hasValidConfig])
 
   // Get all descendants of a node
   const getDescendants = useCallback((nodeId: string, visited = new Set<string>()): string[] => {
@@ -262,7 +273,7 @@ export function HierarchyGraph({
 
   // Initialize Cytoscape
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current || !hasValidConfig || graphData.nodes.length === 0) return
 
     const cy = cytoscape({
       container: containerRef.current,
@@ -466,7 +477,7 @@ export function HierarchyGraph({
     return () => {
       cy.destroy()
     }
-  }, [graphData, colors, onNodeSelect, getIconUrl, toggleCollapse])
+  }, [graphData, colors, onNodeSelect, getIconUrl, toggleCollapse, hasValidConfig])
 
   // Handle collapse/expand visibility
   useEffect(() => {
@@ -622,6 +633,15 @@ export function HierarchyGraph({
     
     setCollapsedNodes(nodesToCollapse)
   }, [graphData.nodes])
+
+  // Show loading state if no valid config
+  if (!hasValidConfig) {
+    return (
+      <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: colors.background }}>
+        <div className="text-muted-foreground text-sm">Loading hierarchy graph...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full h-full relative">
