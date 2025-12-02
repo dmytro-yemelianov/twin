@@ -580,6 +580,61 @@ function createBuildingShell(rooms: SceneConfig["rooms"]): THREE.Group {
   return buildingGroup
 }
 
+// Create a grid for a floor level
+function createFloorGrid(
+  floorName: string,
+  elevation: number,
+  width: number,
+  depth: number
+): THREE.Group {
+  const group = new THREE.Group()
+  
+  // Grid parameters
+  const gridSpacing = 2 // 2 meter grid
+  const gridColor = 0x3a5a7a // Subtle blue-gray color
+  const gridOpacity = 0.3
+  
+  // Create grid lines using LineSegments for better performance
+  const points: THREE.Vector3[] = []
+  
+  // Lines parallel to X axis (along depth)
+  for (let z = 0; z <= depth; z += gridSpacing) {
+    points.push(new THREE.Vector3(0, elevation + 0.02, z))
+    points.push(new THREE.Vector3(width, elevation + 0.02, z))
+  }
+  
+  // Lines parallel to Z axis (along width)
+  for (let x = 0; x <= width; x += gridSpacing) {
+    points.push(new THREE.Vector3(x, elevation + 0.02, 0))
+    points.push(new THREE.Vector3(x, elevation + 0.02, depth))
+  }
+  
+  const geometry = new THREE.BufferGeometry().setFromPoints(points)
+  const material = new THREE.LineBasicMaterial({
+    color: gridColor,
+    transparent: true,
+    opacity: gridOpacity,
+  })
+  
+  const gridLines = new THREE.LineSegments(geometry, material)
+  gridLines.userData = { isFloorGrid: true }
+  group.add(gridLines)
+  
+  // Add floor name label at the corner
+  const labelSprite = createTextSprite(floorName, {
+    fontSize: 36,
+    color: '#4a7a9a',
+    backgroundColor: 'rgba(20, 30, 40, 0.7)',
+    padding: 8,
+  })
+  labelSprite.position.set(2, elevation + 0.5, 2)
+  labelSprite.scale.set(2, 1, 1)
+  labelSprite.userData = { type: "floor-label", floorName }
+  group.add(labelSprite)
+  
+  return group
+}
+
 export function computeDevicePosition(uStart: number, deviceUHeight: number, rackUHeight: number): THREE.Vector3 {
   // Calculate vertical position within rack
   // Assume 1U = ~44.45mm, rack is 2m tall for 42U
@@ -609,6 +664,32 @@ export async function buildScene(
 
   const buildingShell = createBuildingShell(sceneConfig.rooms)
   objects.building = buildingShell
+
+  // Add floor grids for each floor level
+  if (sceneConfig.floors && sceneConfig.floors.length > 0) {
+    // Calculate building dimensions
+    let maxX = 0, maxZ = 0
+    sceneConfig.rooms.forEach((room) => {
+      const x = room.transformInBuilding.position[0]
+      const z = room.transformInBuilding.position[2]
+      maxX = Math.max(maxX, x + 20)
+      maxZ = Math.max(maxZ, z + 15)
+    })
+    const buildingWidth = Math.max(maxX, 35)
+    const buildingDepth = Math.max(maxZ, 20)
+
+    sceneConfig.floors.forEach((floor) => {
+      const floorGridGroup = createFloorGrid(
+        floor.name,
+        floor.elevation || 0,
+        buildingWidth,
+        buildingDepth
+      )
+      floorGridGroup.name = `floor-grid-${floor.id}`
+      floorGridGroup.userData = { type: "floor-grid", data: floor }
+      buildingShell.add(floorGridGroup)
+    })
+  }
 
   // Create rooms
   sceneConfig.rooms.forEach((room) => {

@@ -33,12 +33,14 @@ const sceneThemeColors = {
     background: 0xf5f5f0, // Warm off-white
     gridMain: 0xcccccc,
     gridSecondary: 0xe5e5e5,
+    gridOpacity: 1.0,
     compassRing: 0xaaaaaa,
   },
   dark: {
     background: 0x09090b, // Dark zinc
-    gridMain: 0x444444,
-    gridSecondary: 0x222222,
+    gridMain: 0x2a2a2a, // Much darker grid lines
+    gridSecondary: 0x181818, // Very subtle grid
+    gridOpacity: 0.4, // Semi-transparent
     compassRing: 0x333333,
   },
 }
@@ -237,8 +239,17 @@ export function ThreeScene({
     const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4)
     scene.add(hemisphereLight)
 
-    // Grid helper
+    // Grid helper - semi-transparent for dark mode
     const gridHelper = new THREE.GridHelper(50, 50, themeColors.gridMain, themeColors.gridSecondary)
+    if (Array.isArray(gridHelper.material)) {
+      gridHelper.material.forEach((mat) => {
+        ;(mat as THREE.LineBasicMaterial).transparent = true
+        ;(mat as THREE.LineBasicMaterial).opacity = themeColors.gridOpacity
+      })
+    } else {
+      ;(gridHelper.material as THREE.LineBasicMaterial).transparent = true
+      ;(gridHelper.material as THREE.LineBasicMaterial).opacity = themeColors.gridOpacity
+    }
     scene.add(gridHelper)
     gridHelperRef.current = gridHelper
 
@@ -796,11 +807,12 @@ export function ThreeScene({
 
     // Update grid helper
     if (gridHelperRef.current) {
-      const gridMaterial = gridHelperRef.current.material as THREE.LineBasicMaterial
       if (Array.isArray(gridHelperRef.current.material)) {
         // Grid has two materials: center line and grid lines
-        (gridHelperRef.current.material[0] as THREE.LineBasicMaterial).color.setHex(themeColors.gridMain)
+        ;(gridHelperRef.current.material[0] as THREE.LineBasicMaterial).color.setHex(themeColors.gridMain)
+        ;(gridHelperRef.current.material[0] as THREE.LineBasicMaterial).opacity = themeColors.gridOpacity
         ;(gridHelperRef.current.material[1] as THREE.LineBasicMaterial).color.setHex(themeColors.gridSecondary)
+        ;(gridHelperRef.current.material[1] as THREE.LineBasicMaterial).opacity = themeColors.gridOpacity
       }
     }
 
