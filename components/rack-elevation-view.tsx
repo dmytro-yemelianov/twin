@@ -442,7 +442,7 @@ export function RackElevationView({
         <TooltipTrigger asChild>
           <Card
             className={`shrink-0 p-3 cursor-pointer transition-all ${
-              isSelected ? "ring-2 ring-blue-500 bg-blue-950/20" : "hover:ring-1 hover:ring-gray-500"
+              isSelected ? "ring-2 ring-blue-500 bg-blue-100 dark:bg-blue-950/20" : "hover:ring-1 hover:ring-gray-400 dark:hover:ring-gray-500"
             }`}
             style={{ width: `${cardWidth}px` }}
             onClick={() => handleRackClick(rack.id)}
@@ -594,21 +594,21 @@ export function RackElevationView({
         {Array.from(hierarchicalGroups.entries()).map(([buildingId, { building, floors: floorGroups }]) => (
           <div 
             key={buildingId} 
-            className="border border-amber-500/30 rounded-xl bg-amber-500/5 overflow-hidden"
+            className="border border-amber-500/40 dark:border-amber-500/30 rounded-xl bg-amber-500/10 dark:bg-amber-500/5 overflow-hidden"
           >
             {/* Building Header */}
             <button
               onClick={() => toggleGroup(buildingId)}
-              className="flex items-center gap-3 w-full text-left p-3 bg-amber-500/10 hover:bg-amber-500/20 transition-colors border-b border-amber-500/20"
+              className="flex items-center gap-3 w-full text-left p-3 bg-amber-500/15 dark:bg-amber-500/10 hover:bg-amber-500/25 dark:hover:bg-amber-500/20 transition-colors border-b border-amber-500/30 dark:border-amber-500/20"
             >
               {isGroupExpanded(buildingId) ? (
-                <ChevronDown className="w-5 h-5 text-amber-500" />
+                <ChevronDown className="w-5 h-5 text-amber-600 dark:text-amber-500" />
               ) : (
-                <ChevronRight className="w-5 h-5 text-amber-500" />
+                <ChevronRight className="w-5 h-5 text-amber-600 dark:text-amber-500" />
               )}
-              <Building2 className="w-5 h-5 text-amber-500" />
-              <span className="font-semibold text-amber-200">{building.name}</span>
-              <Badge className="ml-auto bg-amber-500/20 text-amber-300 border-amber-500/30">
+              <Building2 className="w-5 h-5 text-amber-600 dark:text-amber-500" />
+              <span className="font-semibold text-amber-800 dark:text-amber-200">{building.name}</span>
+              <Badge className="ml-auto bg-amber-500/25 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-500/40 dark:border-amber-500/30">
                 {floorGroups.size} floor{floorGroups.size !== 1 ? 's' : ''}
               </Badge>
             </button>
@@ -619,21 +619,21 @@ export function RackElevationView({
                 {Array.from(floorGroups.entries()).map(([floorId, { floor, rooms: roomGroups }]) => (
                   <div 
                     key={floorId} 
-                    className="border border-cyan-500/30 rounded-lg bg-cyan-500/5 overflow-hidden"
+                    className="border border-cyan-500/40 dark:border-cyan-500/30 rounded-lg bg-cyan-500/10 dark:bg-cyan-500/5 overflow-hidden"
                   >
                     {/* Floor Header */}
                     <button
                       onClick={() => toggleGroup(floorId)}
-                      className="flex items-center gap-3 w-full text-left p-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 transition-colors border-b border-cyan-500/20"
+                      className="flex items-center gap-3 w-full text-left p-2.5 bg-cyan-500/15 dark:bg-cyan-500/10 hover:bg-cyan-500/25 dark:hover:bg-cyan-500/20 transition-colors border-b border-cyan-500/30 dark:border-cyan-500/20"
                     >
                       {isGroupExpanded(floorId) ? (
-                        <ChevronDown className="w-4 h-4 text-cyan-500" />
+                        <ChevronDown className="w-4 h-4 text-cyan-600 dark:text-cyan-500" />
                       ) : (
-                        <ChevronRight className="w-4 h-4 text-cyan-500" />
+                        <ChevronRight className="w-4 h-4 text-cyan-600 dark:text-cyan-500" />
                       )}
-                      <Layers className="w-4 h-4 text-cyan-500" />
-                      <span className="font-medium text-cyan-200">{floor.name}</span>
-                      <Badge className="ml-auto bg-cyan-500/20 text-cyan-300 border-cyan-500/30 text-xs">
+                      <Layers className="w-4 h-4 text-cyan-600 dark:text-cyan-500" />
+                      <span className="font-medium text-cyan-800 dark:text-cyan-200">{floor.name}</span>
+                      <Badge className="ml-auto bg-cyan-500/25 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 border-cyan-500/40 dark:border-cyan-500/30 text-xs">
                         {roomGroups.size} room{roomGroups.size !== 1 ? 's' : ''}
                       </Badge>
                     </button>
@@ -644,13 +644,13 @@ export function RackElevationView({
                         {Array.from(roomGroups.entries()).map(([roomId, { room, racks }]) => (
                           <div 
                             key={roomId} 
-                            className="border border-green-500/30 rounded-lg bg-green-500/5 overflow-hidden"
+                            className="border border-green-500/40 dark:border-green-500/30 rounded-lg bg-green-500/10 dark:bg-green-500/5 overflow-hidden"
                           >
                             {/* Room Header */}
-                            <div className="flex items-center gap-2 p-2 bg-green-500/10 border-b border-green-500/20">
-                              <DoorOpen className="w-4 h-4 text-green-500" />
-                              <span className="font-medium text-sm text-green-200">{room.name}</span>
-                              <Badge className="ml-auto bg-green-500/20 text-green-300 border-green-500/30 text-xs">
+                            <div className="flex items-center gap-2 p-2 bg-green-500/15 dark:bg-green-500/10 border-b border-green-500/30 dark:border-green-500/20">
+                              <DoorOpen className="w-4 h-4 text-green-600 dark:text-green-500" />
+                              <span className="font-medium text-sm text-green-800 dark:text-green-200">{room.name}</span>
+                              <Badge className="ml-auto bg-green-500/25 dark:bg-green-500/20 text-green-800 dark:text-green-300 border-green-500/40 dark:border-green-500/30 text-xs">
                                 {racks.length} rack{racks.length !== 1 ? 's' : ''}
                               </Badge>
                             </div>
