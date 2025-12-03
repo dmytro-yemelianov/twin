@@ -8,7 +8,9 @@
       "Bash(pnpm dev:*)",
       "Bash(npx kill-port:*)",
       "Bash(pnpm add:*)",
-      "Bash(pnpm tsc:*)"
+      "Bash(pnpm tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

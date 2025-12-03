@@ -1,7 +1,10 @@
-// Re-export all hooks for convenience
-export * from './use-sites'
-export * from './use-history'
-export * from './use-data'
-export * from './use-debounce'
-export * from './use-scene'
+// Re-export specific hooks to avoid naming conflicts
+export { useSites, useSceneConfig, useDeviceTypes } from './use-sites'
+export { useHistory } from './use-history'
+export { useDebounce } from './use-debounce'
+export { useScene } from './use-scene'
+
+// Export query keys with prefixes to avoid conflicts
+export { queryKeys as sitesQueryKeys } from './use-sites'
+export { queryKeys as dataQueryKeys } from './use-data'
 
