@@ -258,8 +258,8 @@ async function importSite(
                 scale: [1, 1, 1],
             },
             rackOrder: rackOrder++,
-            widthMm: parseIntSafe(rackRow['RACK-W']),
-            depthMm: parseIntSafe(rackRow['RACK-D']),
+            widthMm: parseIntSafe(rackRow['RACK-W']) ?? undefined,
+            depthMm: parseIntSafe(rackRow['RACK-D']) ?? undefined,
             heightMm: calculateHeightMm(parseRackHeight(rackRow['RACK-H'])),
         }).returning()
 
@@ -300,12 +300,12 @@ async function importSite(
                 deviceTypeId: defaultDeviceType.id,
                 name: row['EQUIPMENT NAME'],
                 uStart: 1, // Would need actual U position from data
-                uHeight: parseUHeight(row['EQPT-H']) || 1,
+                uHeight: parseUHeight(row['EQPT-H']) ?? 1,
                 status4D: mapStatus(row['EQPT STATUS']),
                 serialNumber: row.EQPT_ID,
                 sourceSystem: row['SOURCE SYSTEM'],
-                widthMm: parseIntSafe(row['EQPT-W']),
-                depthMm: parseIntSafe(row['EQPT-D']),
+                widthMm: parseIntSafe(row['EQPT-W']) ?? undefined,
+                depthMm: parseIntSafe(row['EQPT-D']) ?? undefined,
             })
             result.devicesCreated++
         } catch (error) {
