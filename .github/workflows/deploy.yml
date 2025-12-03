@@ -46,16 +46,18 @@ jobs:
             ${{ runner.os }}-pnpm-store-
             
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          if [ -f "pnpm-lock.yaml" ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install --no-frozen-lockfile
+          fi
         
       - name: Build with Next.js
         run: pnpm build
         env:
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://localhost/twin' }}
-          
-      - name: Export static files
-        run: pnpm next export -o out
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
