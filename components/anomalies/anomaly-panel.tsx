@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Badge, badgeVariants } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertCircle, CheckCircle, HelpCircle, AlertTriangle, RefreshCw, Check, Search, X, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import type { VariantProps } from 'class-variance-authority'
 import type { VerificationDevice } from '@/lib/services/anomaly-detection.service'
 
 interface Anomaly {
@@ -103,10 +104,12 @@ export function AnomalyPanel({ siteId, onClose }: AnomalyPanelProps) {
         }
     }
 
-    const getSeverityColor = (severity: string) => {
+    const getSeverityVariant = (
+        severity: Anomaly['severity']
+    ): VariantProps<typeof badgeVariants>['variant'] => {
         switch (severity) {
             case 'HIGH': return 'destructive'
-            case 'MEDIUM': return 'warning' // Note: You might need to define a warning variant or use default
+            case 'MEDIUM': return 'warning'
             case 'LOW': return 'secondary'
             default: return 'default'
         }
@@ -196,7 +199,7 @@ export function AnomalyPanel({ siteId, onClose }: AnomalyPanelProps) {
                                             <div className="flex justify-between items-start">
                                                 <div className="font-medium flex items-center gap-2">
                                                     {anomaly.anomalyType}
-                                                    <Badge variant={getSeverityColor(anomaly.severity) as any} className="text-[10px] h-5">
+                                                    <Badge variant={getSeverityVariant(anomaly.severity)} className="text-[10px] h-5">
                                                         {anomaly.severity}
                                                     </Badge>
                                                 </div>

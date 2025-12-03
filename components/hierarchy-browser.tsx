@@ -344,11 +344,13 @@ export function HierarchyBrowser({
     // Call appropriate selection handler
     switch (item.type) {
       case "site":
-        const site = sites.find((s) => s.id === item.id)
-        if (site) {
-          onSiteSelect(site)
-          // Auto-expand the site
-          setExpanded((prev) => new Set([...prev, item.id]))
+        {
+          const site = sites.find((s) => s.id === item.id)
+          if (site) {
+            onSiteSelect(site)
+            // Auto-expand the site
+            setExpanded((prev) => new Set([...prev, item.id]))
+          }
         }
         break
       case "building":
