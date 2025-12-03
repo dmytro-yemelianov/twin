@@ -109,11 +109,11 @@ export async function importDummInventoryCsv(
                         verificationData.push({
                             rackName: row['FULL RACK NAME'],
                             deviceName: row['EQUIPMENT NAME'],
-                            uPosition: parseIntSafe(row.CHASSIS) ?? undefined,
-                            uHeight: parseUHeight(row['EQPT-H']) ?? undefined,
+                            uPosition: parseIntSafe(row.CHASSIS),
+                            uHeight: parseUHeight(row['EQPT-H']),
                             serialNumber: row.EQPT_ID,
-                            widthMm: parseIntSafe(row['EQPT-W']) ?? undefined,
-                            depthMm: parseIntSafe(row['EQPT-D']) ?? undefined,
+                            widthMm: parseIntSafe(row['EQPT-W']),
+                            depthMm: parseIntSafe(row['EQPT-D']),
                             status: row['EQPT STATUS']
                         })
                     }
@@ -258,8 +258,8 @@ async function importSite(
                 scale: [1, 1, 1],
             },
             rackOrder: rackOrder++,
-            widthMm: parseIntSafe(rackRow['RACK-W']) ?? undefined,
-            depthMm: parseIntSafe(rackRow['RACK-D']) ?? undefined,
+            widthMm: parseIntSafe(rackRow['RACK-W']),
+            depthMm: parseIntSafe(rackRow['RACK-D']),
             heightMm: calculateHeightMm(parseRackHeight(rackRow['RACK-H'])),
         }).returning()
 
@@ -300,12 +300,12 @@ async function importSite(
                 deviceTypeId: defaultDeviceType.id,
                 name: row['EQUIPMENT NAME'],
                 uStart: 1, // Would need actual U position from data
-                uHeight: parseUHeight(row['EQPT-H']) ?? 1,
+                uHeight: parseUHeight(row['EQPT-H']) || 1,
                 status4D: mapStatus(row['EQPT STATUS']),
                 serialNumber: row.EQPT_ID,
                 sourceSystem: row['SOURCE SYSTEM'],
-                widthMm: parseIntSafe(row['EQPT-W']) ?? undefined,
-                depthMm: parseIntSafe(row['EQPT-D']) ?? undefined,
+                widthMm: parseIntSafe(row['EQPT-W']),
+                depthMm: parseIntSafe(row['EQPT-D']),
             })
             result.devicesCreated++
         } catch (error) {
@@ -335,11 +335,11 @@ function parseRackHeight(value: string | undefined): number | null {
     return isNaN(num) ? null : num
 }
 
-function parseUHeight(value: string | undefined): number | null {
-    if (!value) return null
+function parseUHeight(value: string | undefined): number | undefined {
+    if (!value) return undefined
     // Convert from millimeters to U units if needed
     const num = parseInt(value)
-    if (isNaN(num)) return null
+    if (isNaN(num)) return undefined
 
     // If value > 100, assume millimeters and convert
     if (num > 100) {
@@ -348,10 +348,10 @@ function parseUHeight(value: string | undefined): number | null {
     return num
 }
 
-function parseIntSafe(value: string | undefined): number | null {
-    if (!value) return null
+function parseIntSafe(value: string | undefined): number | undefined {
+    if (!value) return undefined
     const num = parseInt(value)
-    return isNaN(num) ? null : num
+    return isNaN(num) ? undefined : num
 }
 
 function calculateHeightMm(uHeight: number | null): number | null {
