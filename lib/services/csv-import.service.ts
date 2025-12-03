@@ -109,11 +109,11 @@ export async function importDummInventoryCsv(
                         verificationData.push({
                             rackName: row['FULL RACK NAME'],
                             deviceName: row['EQUIPMENT NAME'],
-                            uPosition: parseIntSafe(row.CHASSIS),
-                            uHeight: parseUHeight(row['EQPT-H']),
+                            uPosition: parseIntSafe(row.CHASSIS) ?? undefined,
+                            uHeight: parseUHeight(row['EQPT-H']) ?? undefined,
                             serialNumber: row.EQPT_ID,
-                            widthMm: parseIntSafe(row['EQPT-W']),
-                            depthMm: parseIntSafe(row['EQPT-D']),
+                            widthMm: parseIntSafe(row['EQPT-W']) ?? undefined,
+                            depthMm: parseIntSafe(row['EQPT-D']) ?? undefined,
                             status: row['EQPT STATUS']
                         })
                     }
