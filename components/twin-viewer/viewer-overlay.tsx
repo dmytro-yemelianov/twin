@@ -42,7 +42,7 @@ export function ViewerOverlay({
         <>
             {/* Selected Device Edit Popup */}
             {selectedDeviceId && (
-                <div className="absolute bottom-20 left-4 z-20">
+                <div className="absolute bottom-4 left-4 z-20">
                     <Card className="p-3 bg-card/95 backdrop-blur border-blue-500/30 shadow-lg max-w-xs">
                         <div className="flex items-center gap-3">
                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shrink-0" />
@@ -81,8 +81,8 @@ export function ViewerOverlay({
                 </div>
             )}
 
-            {/* Viewport Controls - bottom-left to avoid ViewHelper overlap */}
-            <div className="absolute bottom-4 left-4 z-20">
+            {/* Viewport Controls - bottom-center */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
                 <ViewportControls
                     onResetCamera={onResetCamera}
                     onFitView={onFitView}

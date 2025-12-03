@@ -291,7 +291,7 @@ export function RackElevationView({
                   <Thermometer className="w-3 h-3" />
                   {deviceTypeObj.btuHr} BTU/hr
                 </div>
-                {deviceTypeObj.gpuSlots > 0 && (
+                {(deviceTypeObj.gpuSlots || 0) > 0 && (
                   <div className="flex items-center gap-1 text-xs">
                     <HardDrive className="w-3 h-3" />
                     {deviceTypeObj.gpuSlots} GPU slots

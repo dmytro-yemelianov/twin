@@ -48,7 +48,8 @@ import {
   ChevronDown,
   ChevronRight
 } from "lucide-react"
-import type { Device, SceneConfig, DeviceType, Status4D, Rack } from "@/lib/types"
+import type { SceneConfig, DeviceType, Status4D, Rack } from "@/lib/types"
+import type { Device } from "@/lib/db/schema/devices"
 import { status4DColors, status4DLabels } from "@/lib/types"
 import { DeviceStateMachine } from "@/components/devices/device-state-machine"
 import { MoveDeviceDialog } from "@/components/devices/move-device-dialog"
@@ -116,18 +117,21 @@ export function EquipmentTable({
           return (
             device.name.toLowerCase().includes(search) ||
             rack?.name.toLowerCase().includes(search) ||
-            deviceType?.name.toLowerCase().includes(search) ||
+            deviceType?.name?.toLowerCase().includes(search) ||
             device.status4D.toLowerCase().includes(search)
           )
         }
         return true
       })
-      .map(device => ({
-        ...device,
-        rack: rackMap.get(device.rackId),
-        deviceType: deviceTypeMap.get(device.deviceTypeId),
-        room: sceneConfig.rooms.find(r => r.id === device.rack?.roomId)
-      }))
+      .map(device => {
+        const rack = rackMap.get(device.rackId)
+        return {
+          ...device,
+          rack,
+          deviceType: deviceTypeMap.get(device.deviceTypeId),
+          room: sceneConfig.rooms.find(r => r.id === rack?.roomId)
+        }
+      })
   }, [sceneConfig.devices, sceneConfig.rooms, rackMap, deviceTypeMap, visibleStatuses, searchTerm])
 
   // Group devices by logical equipment ID
@@ -207,7 +211,7 @@ export function EquipmentTable({
       `U${d.uStart}`,
       d.powerKw.toString(),
       d.status4D,
-      d.serialNumber || '',
+      (d as any).serialNumber || '',
       d.room?.name || ''
     ])
     
@@ -353,9 +357,9 @@ export function EquipmentTable({
                         onClick={() => onDeviceSelect?.(device.id)}
                       >
                         <div className="flex items-center gap-2">
-                          {device.deviceType?.icon === 'server' && <Server className="h-4 w-4" />}
-                          {device.deviceType?.icon === 'storage' && <HardDrive className="h-4 w-4" />}
-                          {device.deviceType?.icon === 'network' && <Cpu className="h-4 w-4" />}
+                          {(device.deviceType as any)?.icon === 'server' && <Server className="h-4 w-4" />}
+                          {(device.deviceType as any)?.icon === 'storage' && <HardDrive className="h-4 w-4" />}
+                          {(device.deviceType as any)?.icon === 'network' && <Cpu className="h-4 w-4" />}
                           {device.name}
                         </div>
                       </TableCell>
@@ -397,12 +401,12 @@ export function EquipmentTable({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleViewDetails(device)}>
+                            <DropdownMenuItem onClick={() => handleViewDetails(device as unknown as Device)}>
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
-                              setSelectedDevice(device)
+                              setSelectedDevice(device as unknown as Device)
                               setShowMoveDialog(true)
                             }}>
                               <Move className="mr-2 h-4 w-4" />
@@ -412,7 +416,7 @@ export function EquipmentTable({
                             <DropdownMenuItem 
                               className="text-destructive"
                               onClick={() => {
-                                setSelectedDevice(device)
+                                setSelectedDevice(device as unknown as Device)
                                 setShowDeleteDialog(true)
                               }}
                             >
@@ -437,7 +441,7 @@ export function EquipmentTable({
           device={selectedDevice}
           deviceType={deviceTypeMap.get(selectedDevice.deviceTypeId)}
           rack={rackMap.get(selectedDevice.rackId)}
-          relatedDevices={deviceGroups.get(selectedDevice.logicalEquipmentId) || []}
+          relatedDevices={deviceGroups.get(selectedDevice.logicalEquipmentId || '') || []}
           open={showDetails}
           onOpenChange={setShowDetails}
         />
@@ -529,11 +533,11 @@ function EquipmentDetailsDialog({
               </div>
               <div>
                 <div className="text-muted-foreground">Manufacturer</div>
-                <div>{deviceType?.manufacturer || '-'}</div>
+                <div>{(deviceType as any)?.manufacturer || '-'}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Model</div>
-                <div>{deviceType?.model || '-'}</div>
+                <div>{(deviceType as any)?.model || '-'}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Serial Number</div>
@@ -575,15 +579,15 @@ function EquipmentDetailsDialog({
             <CardContent className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Width</div>
-                <div>{device.widthMm || deviceType?.widthMm || '-'} mm</div>
+                <div>{device.widthMm || (deviceType as any)?.widthMm || '-'} mm</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Depth</div>
-                <div>{device.depthMm || deviceType?.depthMm || '-'} mm</div>
+                <div>{device.depthMm || (deviceType as any)?.depthMm || '-'} mm</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Weight</div>
-                <div>{deviceType?.weightKg || '-'} kg</div>
+                <div>{(deviceType as any)?.weightKg || '-'} kg</div>
               </div>
             </CardContent>
           </Card>
@@ -610,7 +614,7 @@ function EquipmentDetailsDialog({
               </div>
               <div>
                 <div className="text-muted-foreground">Power Redundancy</div>
-                <div>{deviceType?.powerRedundancy || 'N+1'}</div>
+                <div>{(deviceType as any)?.powerRedundancy || 'N+1'}</div>
               </div>
             </CardContent>
           </Card>
@@ -652,11 +656,11 @@ function EquipmentDetailsDialog({
             <CardContent className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Installation Date</div>
-                <div>{device.installDate || '-'}</div>
+                <div>{(device as any).installDate || '-'}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Last Maintenance</div>
-                <div>{device.lastMaintenance || '-'}</div>
+                <div>{(device as any).lastMaintenance || '-'}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Asset Tag</div>
@@ -664,7 +668,7 @@ function EquipmentDetailsDialog({
               </div>
               <div>
                 <div className="text-muted-foreground">Cost Center</div>
-                <div>{device.costCenter || '-'}</div>
+                <div>{(device as any).costCenter || '-'}</div>
               </div>
             </CardContent>
           </Card>

@@ -169,9 +169,9 @@ export function useSceneSetup(
         scene.add(compass)
         compassRef.current = compass
 
-        // ViewHelper
+        // ViewHelper (View Cube/Compass) - positioned in top-right corner
         const viewHelper = new ViewHelper(camera, renderer.domElement)
-        viewHelper.center.set(0.85, 0.85, 0)
+        viewHelper.center.set(0.85, 0.15, 0)  // top-right: x=0.85 (right), y=0.15 (top)
         viewHelperRef.current = viewHelper
 
         const handleViewHelperClick = (event: MouseEvent) => {

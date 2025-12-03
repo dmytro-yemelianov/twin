@@ -3,9 +3,10 @@ import { resolveAnomalyAcceptActual } from '@/lib/services/anomaly-detection.ser
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params
         const body = await request.json()
         const { userId, action } = body
 
@@ -17,7 +18,7 @@ export async function POST(
         }
 
         if (action === 'ACCEPT_ACTUAL') {
-            await resolveAnomalyAcceptActual(params.id, userId)
+            await resolveAnomalyAcceptActual(id, userId)
             return NextResponse.json({ success: true })
         }
 

@@ -30,12 +30,9 @@ export function CapacityPlanner({ siteId, onSuggestionFound }: CapacityPlannerPr
             await new Promise(resolve => setTimeout(resolve, 1500))
 
             const mockSuggestion: AICapacitySuggestion = {
-                id: 'sugg-1',
                 rackIds: ['rack-101', 'rack-102', 'rack-103', 'rack-104', 'rack-105'], // These would need to match actual IDs
                 totalFreeU: 180,
                 totalPowerHeadroomKw: 45.5,
-                confidenceScore: 0.95,
-                reasoning: ['Contiguous block found in Row A', 'Sufficient power redundancy', 'Optimal cooling zone'],
                 summary: `Found ${numRacks} contiguous racks with >${minPower}kW power and >${minU}U space each.`
             }
 

@@ -107,6 +107,12 @@ export async function moveDevice(options: MoveDeviceOptions): Promise<{
     device?: typeof devices.$inferSelect
     newDevice?: typeof devices.$inferSelect
     error?: string
+    conflicts?: Array<{
+        deviceId: string
+        deviceName: string
+        uStart: number
+        uEnd: number
+    }>
 }> {
     const { deviceId, targetRackId, targetUPosition, targetPhase, moveType, userId } = options
 

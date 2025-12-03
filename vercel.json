@@ -1,0 +1,24 @@
+{
+  "buildCommand": "pnpm build",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "build": {
+    "env": {
+      "NEXT_TELEMETRY_DISABLED": "1"
+    }
+  },
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "NEXT_PUBLIC_API_URL": "@next_public_api_url"
+  },
+  "github": {
+    "silent": true
+  },
+  "ignoreCommand": "git diff HEAD^ HEAD --quiet .",
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
+}

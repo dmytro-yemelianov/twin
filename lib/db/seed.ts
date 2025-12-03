@@ -101,13 +101,13 @@ async function seed() {
           .values({
             code: dt.id,
             category: dt.category as any,
-            name: dt.name,
+            name: (dt as any).name,
             description: dt.description,
             modelRef: dt.modelRef,
             uHeight: dt.uHeight,
-            powerKw: dt.powerKw,
-            btuHr: dt.btuHr,
-            gpuSlots: dt.gpuSlots,
+            powerKw: (dt as any).powerKw || 0,
+            btuHr: (dt as any).btuHr || 0,
+            gpuSlots: (dt as any).gpuSlots || 0,
           })
           .returning()
         deviceTypeMap.set(dt.id, newDt.id)

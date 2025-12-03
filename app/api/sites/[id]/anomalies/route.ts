@@ -6,16 +6,17 @@ import { detectAnomalies, saveAnomalies, VerificationDevice } from '@/lib/servic
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params
         const searchParams = request.nextUrl.searchParams
         const status = searchParams.get('status')
         const severity = searchParams.get('severity')
         const type = searchParams.get('type')
 
         // Note: Drizzle query building with dynamic filters is better done with array of conditions
-        const conditions = [eq(anomalies.siteId, params.id)]
+        const conditions = [eq(anomalies.siteId, id)]
         if (status) conditions.push(eq(anomalies.status, status as any))
         if (severity) conditions.push(eq(anomalies.severity, severity as any))
         if (type) conditions.push(eq(anomalies.anomalyType, type as any))
@@ -38,9 +39,10 @@ export async function GET(
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params
         const body = await request.json()
         const { verificationData, save = true } = body
 
@@ -53,13 +55,13 @@ export async function POST(
 
         // Run detection
         const result = await detectAnomalies(
-            params.id,
+            id,
             verificationData as VerificationDevice[]
         )
 
         // Save if requested
         if (save && result.anomalies.length > 0) {
-            await saveAnomalies(params.id, result.anomalies)
+            await saveAnomalies(id, result.anomalies)
         }
 
         return NextResponse.json(result)

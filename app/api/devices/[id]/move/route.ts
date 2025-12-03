@@ -4,9 +4,10 @@ import type { Phase } from '@/lib/types'
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params
         const body = await request.json()
         const { targetRackId, targetUPosition, targetPhase, moveType, userId } = body
 
@@ -34,7 +35,7 @@ export async function POST(
 
         // Execute move
         const result = await moveDevice({
-            deviceId: params.id,
+            deviceId: id,
             targetRackId,
             targetUPosition,
             targetPhase: targetPhase as Phase,

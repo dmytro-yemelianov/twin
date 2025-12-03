@@ -112,7 +112,7 @@ export class ApiClient {
           throw new ApiClientError(
             data.error,
             response.status,
-            data.code || 'API_ERROR',
+            (data as any).code || 'API_ERROR',
             data
           )
         }

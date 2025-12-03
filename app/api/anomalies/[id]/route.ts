@@ -5,9 +5,10 @@ import { eq } from 'drizzle-orm'
 
 export async function PATCH(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params
         const body = await request.json()
         const { status, assignedTo, notes, severity } = body
 
@@ -23,7 +24,7 @@ export async function PATCH(
         await db
             .update(anomalies)
             .set(updateData)
-            .where(eq(anomalies.id, params.id))
+            .where(eq(anomalies.id, id))
 
         return NextResponse.json({ success: true })
     } catch (error) {
@@ -37,13 +38,14 @@ export async function PATCH(
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params
         const [anomaly] = await db
             .select()
             .from(anomalies)
-            .where(eq(anomalies.id, params.id))
+            .where(eq(anomalies.id, id))
 
         if (!anomaly) {
             return NextResponse.json(

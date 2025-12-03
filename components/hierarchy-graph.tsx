@@ -115,7 +115,7 @@ export function HierarchyGraph({
     // Buildings
     const buildings = sceneConfig.buildings || [{ id: 'building-default', name: 'Building' }]
     buildings.forEach((building) => {
-      const buildingId = building.id || `building-${buildings.indexOf(building)}`
+      const buildingId = (building as any).id || `building-${buildings.indexOf(building as any)}`
       nodes.push({
         data: { 
           id: buildingId, 
@@ -194,7 +194,7 @@ export function HierarchyGraph({
           emoji: nodeEmojis.device,
           type: 'device',
           nodeType: 'device',
-          category: device.category,
+          category: (device as any).category,
           status: device.status4D,
           hasChildren: false,
         }
@@ -250,7 +250,7 @@ export function HierarchyGraph({
             'border-width': 0,
             'text-outline-width': 0,
             'transition-property': 'background-color, border-width',
-            'transition-duration': '0.2s',
+            'transition-duration': 200,
           }
         },
         // Type-specific sizes

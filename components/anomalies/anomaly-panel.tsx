@@ -4,8 +4,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AlertCircle, CheckCircle, HelpCircle, AlertTriangle, RefreshCw, Check, Search, X } from 'lucide-react'
+import { AlertCircle, CheckCircle, HelpCircle, AlertTriangle, RefreshCw, Check, Search, X, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import type { VerificationDevice } from '@/lib/services/anomaly-detection.service'
 
 interface Anomaly {
     id: string
@@ -56,7 +57,7 @@ export function AnomalyPanel({ siteId, onClose }: AnomalyPanelProps) {
         try {
             // For demo purposes, we'll create sample verification data
             // In production, this would come from a physical audit or IoT sensors
-            const verificationData = [
+            const verificationData: VerificationDevice[] = [
                 // This would normally come from scanning/audit
             ]
 
