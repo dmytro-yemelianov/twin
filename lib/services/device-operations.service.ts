@@ -223,7 +223,7 @@ export async function moveDevice(options: MoveDeviceOptions): Promise<{
                     modificationType: 'add',
                     targetPhase,
                     toLocation: { rackId: targetRackId, uPosition: targetUPosition },
-                    statusChange: { from: null, to: 'PROPOSED' },
+                    statusChange: { from: 'NEW', to: 'PROPOSED' },
                     userId,
                     notes: `New device created for planned relocation (linked: ${logicalId})`,
                 },
