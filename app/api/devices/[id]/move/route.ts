@@ -12,10 +12,10 @@ const moveDeviceSchema = z.object({
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
-        const { id } = await params
+        const { id } = params
         const userId = request.headers.get('x-user-id')
 
         if (!userId) {
