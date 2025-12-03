@@ -2,6 +2,7 @@ import js from "@eslint/js"
 import globals from "globals"
 import nextPlugin from "@next/eslint-plugin-next"
 import tseslint from "typescript-eslint"
+import reactHooks from "./eslint-react-hooks-plugin.mjs"
 
 const tsConfigs = tseslint.configs.recommended
 
@@ -22,7 +23,11 @@ export default [
   nextPlugin.configs["core-web-vitals"],
   {
     files: ["**/*.{ts,tsx,js,jsx}"],
+    plugins: {
+      "react-hooks": reactHooks,
+    },
     rules: {
+      ...reactHooks.configs.recommended.rules,
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": [
         "warn",
