@@ -11,7 +11,8 @@
       "Bash(pnpm tsc:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "WebFetch(domain:vercel.com)"
     ],
     "deny": [],
     "ask": []
