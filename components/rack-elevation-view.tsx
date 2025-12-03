@@ -67,7 +67,7 @@ export function RackElevationView({
   const [showFront, setShowFront] = useState(true)
   const [showBack, setShowBack] = useState(true)
   const [backLayout, setBackLayout] = useState<'below' | 'side'>('below') // 'below' or 'side'
-  
+
   // Building and floor filters
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>("all")
   const [selectedFloorId, setSelectedFloorId] = useState<string>("all")
@@ -111,43 +111,43 @@ export function RackElevationView({
   // Build a map of room -> floor -> building
   const roomHierarchy = useMemo(() => {
     const hierarchy = new Map<string, { floorId: string; buildingId: string }>()
-    
+
     sceneConfig.rooms.forEach(room => {
       const floorId = room.floorId || "default-floor"
       const floor = floors.find(f => f.id === floorId)
       const buildingId = floor?.buildingId || "default-building"
       hierarchy.set(room.id, { floorId, buildingId })
     })
-    
+
     return hierarchy
   }, [sceneConfig.rooms, floors])
 
   // Group racks by building and floor
   const racksGroupedByLocation = useMemo(() => {
     const groups = new Map<string, { building: BuildingInfo; floor: Floor; room: Room; racks: typeof sceneConfig.racks }>()
-    
+
     sceneConfig.racks.forEach(rack => {
       const room = sceneConfig.rooms.find(r => r.id === rack.roomId)
       if (!room) return
-      
+
       const hierarchy = roomHierarchy.get(room.id)
       if (!hierarchy) return
-      
+
       const building = buildings.find(b => b.id === hierarchy.buildingId) || buildings[0]
       const floor = floors.find(f => f.id === hierarchy.floorId) || floors[0]
-      
+
       // Apply filters
       if (selectedBuildingId !== "all" && building.id !== selectedBuildingId) return
       if (selectedFloorId !== "all" && floor.id !== selectedFloorId) return
-      
+
       const groupKey = `${building.id}-${floor.id}-${room.id}`
-      
+
       if (!groups.has(groupKey)) {
         groups.set(groupKey, { building, floor, room, racks: [] })
       }
       groups.get(groupKey)!.racks.push(rack)
     })
-    
+
     return groups
   }, [sceneConfig.racks, sceneConfig.rooms, roomHierarchy, buildings, floors, selectedBuildingId, selectedFloorId])
 
@@ -160,21 +160,21 @@ export function RackElevationView({
         rooms: Map<string, { room: Room; racks: typeof sceneConfig.racks }>
       }>
     }>()
-    
+
     racksGroupedByLocation.forEach(({ building, floor, room, racks }) => {
       if (!result.has(building.id)) {
         result.set(building.id, { building, floors: new Map() })
       }
       const buildingGroup = result.get(building.id)!
-      
+
       if (!buildingGroup.floors.has(floor.id)) {
         buildingGroup.floors.set(floor.id, { floor, rooms: new Map() })
       }
       const floorGroup = buildingGroup.floors.get(floor.id)!
-      
+
       floorGroup.rooms.set(room.id, { room, racks })
     })
-    
+
     return result
   }, [racksGroupedByLocation])
 
@@ -190,7 +190,7 @@ export function RackElevationView({
       return next
     })
   }
-  
+
   // Check if a group is expanded (not in collapsed set)
   const isGroupExpanded = (groupId: string) => !collapsedGroups.has(groupId)
 
@@ -225,17 +225,26 @@ export function RackElevationView({
 
     // Filter devices based on phase and status visibility
     const allowedStatusesForPhase = phaseVisibilityMap[currentPhase]
-    const devicesInRack = sceneConfig.devices
+    const allDevicesInRack = sceneConfig.devices.filter((d) => d.rackId === rack.id)
+
+    // Separate vertical-mount (PDU) and horizontal-mount devices
+    const verticalMountDevices = allDevicesInRack.filter((d) => {
+      const deviceType = deviceTypes.find(dt => dt.id === d.deviceTypeId)
+      return deviceType?.mounting === 'vertical'
+    })
+
+    const devicesInRack = allDevicesInRack
       .filter((d) => {
-        // Must be in this rack
-        if (d.rackId !== rack.id) return false
-        
+        // Exclude vertical-mount devices from normal U-space rendering
+        const deviceType = deviceTypes.find(dt => dt.id === d.deviceTypeId)
+        if (deviceType?.mounting === 'vertical') return false
+
         // Must be allowed in current phase
         if (!allowedStatusesForPhase.includes(d.status4D)) return false
-        
+
         // Must be in visible statuses (if specified)
         if (visibleStatuses && !visibleStatuses.has(d.status4D)) return false
-        
+
         return true
       })
       .sort((a, b) => a.uStart - b.uStart)
@@ -250,7 +259,7 @@ export function RackElevationView({
 
     for (let u = uHeight; u >= 1; u--) {
       // Check for any device at this U position (including filtered ones)
-      const anyDeviceAtU = sceneConfig.devices.find((d) => 
+      const anyDeviceAtU = sceneConfig.devices.find((d) =>
         d.rackId === rack.id && d.uStart <= u && d.uStart + d.uHeight > u
       )
       const deviceAtU = devicesInRack.find((d) => d.uStart <= u && d.uStart + d.uHeight > u)
@@ -298,18 +307,17 @@ export function RackElevationView({
             )}
           </div>
         )
-        
+
         units.push(
           <Tooltip key={`${rack.id}-${u}-device`}>
             <TooltipTrigger asChild>
               <div
-                className={`cursor-pointer transition-all border group relative ${
-                  isSelected 
-                    ? "ring-2 ring-blue-400 z-10 border-blue-400" 
-                    : isRelated
-                      ? "ring-2 ring-cyan-400/70 z-10 border-cyan-400"
-                      : "border-gray-700/30 hover:ring-1 hover:ring-gray-400"
-                }`}
+                className={`cursor-pointer transition-all border group relative ${isSelected
+                  ? "ring-2 ring-blue-400 z-10 border-blue-400"
+                  : isRelated
+                    ? "ring-2 ring-cyan-400/70 z-10 border-cyan-400"
+                    : "border-gray-700/30 hover:ring-1 hover:ring-gray-400"
+                  }`}
                 style={{
                   height: `${deviceAtU.uHeight * uHeightPx}px`,
                   backgroundColor: color,
@@ -326,10 +334,9 @@ export function RackElevationView({
                 </div>
                 {/* 4D Link indicator */}
                 {show4DLinks && has4DLinks && (
-                  <div 
-                    className={`absolute left-0.5 top-0.5 w-3 h-3 rounded-full flex items-center justify-center ${
-                      isSelected || isRelated ? 'bg-cyan-400' : 'bg-cyan-500/60'
-                    }`}
+                  <div
+                    className={`absolute left-0.5 top-0.5 w-3 h-3 rounded-full flex items-center justify-center ${isSelected || isRelated ? 'bg-cyan-400' : 'bg-cyan-500/60'
+                      }`}
                     title={`${relatedCount} linked states`}
                   >
                     <GitBranch className="w-2 h-2 text-white" />
@@ -387,11 +394,9 @@ export function RackElevationView({
         units.push(
           <div
             key={`${rack.id}-${u}-empty`}
-            className="border border-border/20 bg-background/30 flex items-center justify-center"
+            className="border border-border/20 bg-background/30"
             style={{ height: `${uHeightPx}px` }}
-          >
-            <span className="text-[7px] text-muted-foreground">U{u}</span>
-          </div>,
+          />,
         )
       }
     }
@@ -413,10 +418,64 @@ export function RackElevationView({
       </div>
     )
 
-    // Calculate card width based on layout
-    const cardWidth = showFront && showBack && backLayout === 'side' 
-      ? (rackWidthPx * 2 + 36) // Two views side by side
-      : (rackWidthPx + 24) // Single column
+    // Calculate card width based on layout (including space for U labels and PDUs)
+    const pduStripWidth = verticalMountDevices.length > 0 ? 12 : 0
+    const cardWidth = showFront && showBack && backLayout === 'side'
+      ? (rackWidthPx * 2 + 80 + pduStripWidth * 4) // Two views side by side with U labels and PDUs
+      : (rackWidthPx + 40 + pduStripWidth * 2) // Single column with U labels and PDUs
+
+    // Render PDU strips (vertical-mount devices)
+    const renderPDUStrip = (side: 'left' | 'right') => {
+      const pdusOnSide = verticalMountDevices.filter((d, idx) =>
+        side === 'left' ? idx % 2 === 0 : idx % 2 === 1
+      )
+
+      if (pdusOnSide.length === 0) return null
+
+      return (
+        <div className="flex flex-col gap-0.5">
+          {pdusOnSide.map((pdu) => {
+            const color = status4DColors[pdu.status4D]
+            const isSelected = selectedDeviceId === pdu.id
+            const deviceType = deviceTypes.find(dt => dt.id === pdu.deviceTypeId)
+
+            return (
+              <Tooltip key={pdu.id}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={`cursor-pointer transition-all rounded ${isSelected ? 'ring-2 ring-blue-400' : 'hover:ring-1 hover:ring-gray-400'
+                      }`}
+                    style={{
+                      width: `${pduStripWidth}px`,
+                      height: `${rack.uHeight * uHeightPx}px`,
+                      backgroundColor: color,
+                      opacity: isSelected ? 1 : 0.8,
+                      writingMode: 'vertical-rl',
+                      textOrientation: 'mixed',
+                    }}
+                    onClick={() => handleDeviceClick(pdu.id)}
+                  >
+                    <div className="h-full flex items-center justify-center">
+                      <span className="text-[7px] font-semibold text-white transform rotate-180 truncate px-0.5">
+                        {pdu.name}
+                      </span>
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <div className="space-y-1">
+                    <div className="font-semibold">{pdu.name}</div>
+                    <div className="text-xs opacity-90">{deviceType?.category || 'PDU'}</div>
+                    <div className="text-xs opacity-75">Vertical Mount</div>
+                    <div className="text-xs opacity-75">Status: {status4DLabels[pdu.status4D]}</div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            )
+          })}
+        </div>
+      )
+    }
 
     const renderRackView = (viewType: 'front' | 'back') => (
       <div className={backLayout === 'side' && showFront && showBack ? '' : viewType === 'front' ? 'mb-3' : ''}>
@@ -424,15 +483,41 @@ export function RackElevationView({
           <Eye className="w-3 h-3" />
           <span className="text-[10px] font-semibold">{viewType === 'front' ? 'Front' : 'Back'}</span>
         </div>
-        <div
-          className="bg-card border border-border/40 rounded"
-          style={{
-            width: `${rackWidthPx}px`,
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {units}
+        <div className="flex gap-1">
+          {/* Left PDU Strip */}
+          {pduStripWidth > 0 && renderPDUStrip('left')}
+
+          {/* U Position Labels on the left side */}
+          <div className="flex flex-col justify-between py-[1px]">
+            {Array.from({ length: rack.uHeight }, (_, i) => {
+              const u = rack.uHeight - i
+              return (
+                <div
+                  key={`label-${u}`}
+                  className="flex items-center justify-end pr-1"
+                  style={{ height: `${uHeightPx}px` }}
+                >
+                  <span className="text-[6px] text-muted-foreground font-mono">
+                    {u.toString().padStart(2, '0')}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          {/* Rack Units */}
+          <div
+            className="bg-card border border-border/40 rounded"
+            style={{
+              width: `${rackWidthPx}px`,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {units}
+          </div>
+
+          {/* Right PDU Strip */}
+          {pduStripWidth > 0 && renderPDUStrip('right')}
         </div>
       </div>
     )
@@ -441,9 +526,8 @@ export function RackElevationView({
       <Tooltip key={rack.id}>
         <TooltipTrigger asChild>
           <Card
-            className={`shrink-0 p-3 cursor-pointer transition-all ${
-              isSelected ? "ring-2 ring-blue-500 bg-blue-100 dark:bg-blue-950/20" : "hover:ring-1 hover:ring-gray-400 dark:hover:ring-gray-500"
-            }`}
+            className={`shrink-0 p-3 cursor-pointer transition-all ${isSelected ? "ring-2 ring-blue-500 bg-blue-100 dark:bg-blue-950/20" : "hover:ring-1 hover:ring-gray-400 dark:hover:ring-gray-500"
+              }`}
             style={{ width: `${cardWidth}px` }}
             onClick={() => handleRackClick(rack.id)}
           >
@@ -514,7 +598,7 @@ export function RackElevationView({
                 ))}
               </SelectContent>
             </Select>
-            
+
             <Layers className="w-4 h-4 text-muted-foreground ml-2" />
             <Select value={selectedFloorId} onValueChange={setSelectedFloorId}>
               <SelectTrigger className="h-7 w-[120px] text-xs">
@@ -557,7 +641,7 @@ export function RackElevationView({
                 {showBack ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3 opacity-50" />}
                 Back
               </Label>
-      </div>
+            </div>
 
             {/* Layout Toggle - only show when both views are enabled */}
             {showFront && showBack && (
@@ -592,8 +676,8 @@ export function RackElevationView({
       {/* Grouped Rack Display - All expanded by default in rectangular containers */}
       <div className="space-y-6">
         {Array.from(hierarchicalGroups.entries()).map(([buildingId, { building, floors: floorGroups }]) => (
-          <div 
-            key={buildingId} 
+          <div
+            key={buildingId}
             className="border border-amber-500/40 dark:border-amber-500/30 rounded-xl bg-amber-500/10 dark:bg-amber-500/5 overflow-hidden"
           >
             {/* Building Header */}
@@ -612,13 +696,13 @@ export function RackElevationView({
                 {floorGroups.size} floor{floorGroups.size !== 1 ? 's' : ''}
               </Badge>
             </button>
-            
+
             {/* Building Content */}
             {isGroupExpanded(buildingId) && (
               <div className="p-4 space-y-4">
                 {Array.from(floorGroups.entries()).map(([floorId, { floor, rooms: roomGroups }]) => (
-                  <div 
-                    key={floorId} 
+                  <div
+                    key={floorId}
                     className="border border-cyan-500/40 dark:border-cyan-500/30 rounded-lg bg-cyan-500/10 dark:bg-cyan-500/5 overflow-hidden"
                   >
                     {/* Floor Header */}
@@ -637,13 +721,13 @@ export function RackElevationView({
                         {roomGroups.size} room{roomGroups.size !== 1 ? 's' : ''}
                       </Badge>
                     </button>
-                    
+
                     {/* Floor Content */}
                     {isGroupExpanded(floorId) && (
                       <div className="p-3 space-y-3">
                         {Array.from(roomGroups.entries()).map(([roomId, { room, racks }]) => (
-                          <div 
-                            key={roomId} 
+                          <div
+                            key={roomId}
                             className="border border-green-500/40 dark:border-green-500/30 rounded-lg bg-green-500/10 dark:bg-green-500/5 overflow-hidden"
                           >
                             {/* Room Header */}
@@ -654,10 +738,10 @@ export function RackElevationView({
                                 {racks.length} rack{racks.length !== 1 ? 's' : ''}
                               </Badge>
                             </div>
-                            
+
                             {/* Racks - Always visible */}
-                            <div 
-                              className="flex gap-4 overflow-x-auto p-3" 
+                            <div
+                              className="flex gap-4 overflow-x-auto p-3"
                               style={{ scrollSnapType: "x mandatory" }}
                             >
                               {getRackOrder(racks).map((rack) => renderRack(rack.id))}
@@ -672,7 +756,7 @@ export function RackElevationView({
             )}
           </div>
         ))}
-        
+
         {/* Empty state */}
         {hierarchicalGroups.size === 0 && (
           <div className="text-center py-12 text-muted-foreground border border-border/30 rounded-xl bg-card/30">
@@ -680,7 +764,7 @@ export function RackElevationView({
             <p>No racks found for the selected filters.</p>
             <p className="text-sm mt-1">Try changing the building or floor selection.</p>
           </div>
-      )}
+        )}
       </div>
     </div>
   )

@@ -1,83 +1,63 @@
 "use client"
 
+import { Moon, Sun, Monitor } from "lucide-react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
-import { Sun, Moon, Monitor } from "lucide-react"
-import { useEffect, useState } from "react"
+import { cn } from "@/lib/utils"
 
 interface ThemeToggleProps {
-  variant?: "icon" | "full"
+  variant?: "icon" | "full" | "buttons"
   className?: string
 }
 
-export function ThemeToggle({ variant = "icon", className }: ThemeToggleProps) {
-  const { theme, setTheme, resolvedTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
+export function ThemeToggle({ variant = "buttons", className }: ThemeToggleProps) {
+  const { theme, setTheme } = useTheme()
 
-  // Prevent hydration mismatch
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
+  if (variant === "buttons") {
     return (
-      <Button variant="ghost" size="sm" className={className} disabled>
-        <Sun className="w-4 h-4" />
-        {variant === "full" && <span className="ml-2">Theme</span>}
-      </Button>
+      <div className={cn("flex items-center gap-1 bg-background/50 rounded-lg p-1 border border-border/30", className)}>
+        <Button
+          variant={theme === "light" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setTheme("light")}
+          className="h-7 px-3"
+        >
+          <Sun className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Light</span>
+        </Button>
+        <Button
+          variant={theme === "system" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setTheme("system")}
+          className="h-7 px-3"
+        >
+          <Monitor className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">System</span>
+        </Button>
+        <Button
+          variant={theme === "dark" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setTheme("dark")}
+          className="h-7 px-3"
+        >
+          <Moon className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Dark</span>
+        </Button>
+      </div>
     )
   }
 
-  const cycleTheme = () => {
-    if (theme === "light") {
-      setTheme("dark")
-    } else if (theme === "dark") {
-      setTheme("system")
-    } else {
-      setTheme("light")
-    }
-  }
-
-  const getIcon = () => {
-    if (theme === "system") {
-      return <Monitor className="w-4 h-4" />
-    }
-    return resolvedTheme === "dark" ? (
-      <Moon className="w-4 h-4" />
-    ) : (
-      <Sun className="w-4 h-4" />
-    )
-  }
-
-  const getLabel = () => {
-    if (theme === "system") return "System"
-    return theme === "dark" ? "Dark" : "Light"
-  }
-
-  if (variant === "icon") {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={cycleTheme}
-        className={className}
-        title={`Theme: ${getLabel()}`}
-      >
-        {getIcon()}
-      </Button>
-    )
-  }
-
+  // Legacy variants for backwards compatibility
   return (
     <Button
       variant="ghost"
-      size="sm"
-      onClick={cycleTheme}
-      className={`justify-start gap-3 ${className ?? ""}`}
+      size={variant === "icon" ? "icon" : "default"}
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      className={className}
     >
-      {getIcon()}
-      <span>Theme: {getLabel()}</span>
+      <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+      <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+      <span className="sr-only">Toggle theme</span>
     </Button>
   )
 }
-

@@ -12,7 +12,6 @@ export async function loadGeometryFile(geometryFile: GeometryFile): Promise<THRE
   try {
     // In a real implementation, this would use GLTFLoader
     // For this demo, we'll create a placeholder representation
-    console.log("[v0] Loading geometry file:", geometryFile.name)
 
     // Create a simple building mesh as placeholder
     // In production, this would parse the actual GLB/GLTF data
@@ -36,7 +35,6 @@ export async function loadGeometryFile(geometryFile: GeometryFile): Promise<THRE
     wireframe.position.copy(building.position)
     group.add(wireframe)
 
-    console.log("[v0] Geometry loaded successfully")
   } catch (error) {
     console.error("[v0] Failed to load geometry:", error)
     throw error
@@ -51,7 +49,6 @@ export async function loadGeometryFile(geometryFile: GeometryFile): Promise<THRE
 export async function loadModelFile(modelData: string): Promise<THREE.Object3D> {
   // Placeholder for model loading
   // In production, would use GLTFLoader with the base64 data
-  console.log("[v0] Loading equipment model")
 
   const geometry = new THREE.BoxGeometry(1, 2, 1)
   const material = new THREE.MeshPhongMaterial({ color: 0x3b82f6 })

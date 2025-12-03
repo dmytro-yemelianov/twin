@@ -11,7 +11,9 @@ import type { Device, SceneConfig, Status4D, Phase } from "@/lib/types"
 import { status4DColors, status4DLabels } from "@/lib/types"
 import { validateDevicePlacement, getAvailableUPositions } from "@/lib/validation"
 import { addModification, getModifications } from "@/lib/modification-tracker"
-import { Move, AlertCircle, CheckCircle2, History, ArrowRight, GitBranch, MapPin } from "lucide-react"
+import { Move, AlertCircle, CheckCircle2, History, ArrowRight, GitBranch, MapPin, Trash2 } from "lucide-react"
+import { MoveDeviceDialog, DeleteDeviceDialog } from "@/components/devices"
+import { DeviceStateMachine } from "@/components/devices/device-state-machine"
 
 interface EquipmentEditorProps {
   sceneConfig: SceneConfig
@@ -25,6 +27,9 @@ export function EquipmentEditor({ sceneConfig, selectedDeviceId, currentPhase, o
   const selectedDevice = useMemo(() => {
     return sceneConfig.devices.find((d) => d.id === selectedDeviceId)
   }, [sceneConfig, selectedDeviceId])
+
+  const [showMoveDialog, setShowMoveDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Get all related devices (same logicalEquipmentId) across all 4D states
   const deviceHistory = useMemo(() => {
@@ -173,7 +178,7 @@ export function EquipmentEditor({ sceneConfig, selectedDeviceId, currentPhase, o
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Equipment Editor</h3>
-          <p className="text-xs text-muted-foreground">Move equipment between racks and U positions</p>
+          <p className="text-xs text-muted-foreground">Manage equipment lifecycle and positioning</p>
         </div>
         {onClose && (
           <Button variant="ghost" size="sm" onClick={onClose}>
@@ -182,12 +187,34 @@ export function EquipmentEditor({ sceneConfig, selectedDeviceId, currentPhase, o
         )}
       </div>
 
-      {/* Current Device Info */}
+      {/* Current Device Info with Actions */}
       <Card className="p-4 bg-muted/20">
-        <div className="space-y-2">
-          <div>
-            <div className="text-xs text-muted-foreground">Selected Device</div>
-            <div className="font-semibold">{selectedDevice.name}</div>
+        <div className="space-y-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-xs text-muted-foreground">Selected Device</div>
+              <div className="font-semibold">{selectedDevice.name}</div>
+            </div>
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowMoveDialog(true)}
+              >
+                <Move className="h-4 w-4 mr-1" />
+                Move
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowDeleteDialog(true)}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete
+              </Button>
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div>
@@ -202,6 +229,15 @@ export function EquipmentEditor({ sceneConfig, selectedDeviceId, currentPhase, o
               <div className="text-muted-foreground">Height</div>
               <div className="font-medium">{selectedDevice.uHeight}U</div>
             </div>
+          </div>
+          
+          {/* State Machine Visualization */}
+          <div className="pt-2 border-t border-border/30">
+            <DeviceStateMachine 
+              currentState={selectedDevice.status4D} 
+              targetState={selectedDevice.status4D}
+              compact
+            />
           </div>
         </div>
       </Card>
@@ -455,6 +491,45 @@ export function EquipmentEditor({ sceneConfig, selectedDeviceId, currentPhase, o
               ))}
           </div>
         </Card>
+      )}
+
+      {/* Move Device Dialog */}
+      {showMoveDialog && selectedDevice && (
+        <MoveDeviceDialog
+          device={{
+            id: selectedDevice.id,
+            name: selectedDevice.name,
+            status4D: selectedDevice.status4D,
+            uHeight: selectedDevice.uHeight,
+            currentRackId: selectedDevice.rackId,
+            currentUPosition: selectedDevice.uStart,
+          }}
+          open={showMoveDialog}
+          onOpenChange={setShowMoveDialog}
+          onSuccess={() => {
+            setShowMoveDialog(false)
+            // Refresh or handle success
+            window.location.reload()
+          }}
+        />
+      )}
+
+      {/* Delete Device Dialog */}
+      {showDeleteDialog && selectedDevice && (
+        <DeleteDeviceDialog
+          device={{
+            id: selectedDevice.id,
+            name: selectedDevice.name,
+            status4D: selectedDevice.status4D,
+          }}
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          onSuccess={() => {
+            setShowDeleteDialog(false)
+            // Refresh or handle success
+            window.location.reload()
+          }}
+        />
       )}
     </div>
   )

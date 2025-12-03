@@ -20,6 +20,10 @@ export const devices = pgTable('devices', {
   powerKw: real('power_kw').default(0).notNull(),
   serialNumber: text('serial_number'),
   assetTag: text('asset_tag'),
+  customer: text('customer'), // Customer/owner for Customer color mode
+  sourceSystem: text('source_system'), // Origin system (e.g., "GRANITE" from CSV)
+  widthMm: integer('width_mm'), // Width in millimeters (from CSV EQPT-W)
+  depthMm: integer('depth_mm'), // Depth in millimeters (from CSV EQPT-D)
   purchaseDate: timestamp('purchase_date'),
   warrantyExpiry: timestamp('warranty_expiry'),
   notes: text('notes'),
@@ -41,4 +45,3 @@ export const devicesRelations = relations(devices, ({ one }) => ({
 
 export type Device = typeof devices.$inferSelect
 export type NewDevice = typeof devices.$inferInsert
-

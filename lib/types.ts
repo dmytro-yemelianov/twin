@@ -40,6 +40,7 @@ export interface DeviceType {
   powerKw?: number
   btuHr?: number
   gpuSlots?: number
+  mounting?: 'horizontal' | 'vertical' // For PDUs and other vertical-mount devices
 }
 
 // Scene Config Types

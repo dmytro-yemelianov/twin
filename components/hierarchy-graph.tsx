@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react"
 import { useTheme } from "next-themes"
-import cytoscape, { Core } from "cytoscape"
+import cytoscape, { Core, NodeSingular } from "cytoscape"
 import type { SceneConfig } from "@/lib/types"
 
 interface HierarchyGraphProps {
@@ -73,10 +73,11 @@ export function HierarchyGraph({
   const { resolvedTheme } = useTheme()
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
   const [tooltip, setTooltip] = useState<{ x: number; y: number; name: string; type: string; childCount?: number } | null>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   const colors = resolvedTheme === 'light' ? themeColors.light : themeColors.dark
 
-  // Build graph data from sceneConfig
+  // Stable graph data - memoize to prevent unnecessary recalculations
   const graphData = useMemo(() => {
     const nodes: cytoscape.ElementDefinition[] = []
     const edges: cytoscape.ElementDefinition[] = []
@@ -125,7 +126,7 @@ export function HierarchyGraph({
           hasChildren: true,
         }
       })
-      edges.push({ data: { source: siteId, target: buildingId } })
+      edges.push({ data: { source: siteId, target: buildingId, id: `edge-${siteId}-${buildingId}` } })
       addChild(siteId, buildingId)
     })
 
@@ -143,7 +144,7 @@ export function HierarchyGraph({
           hasChildren: true,
         }
       })
-      edges.push({ data: { source: parentBuildingId, target: floor.id } })
+      edges.push({ data: { source: parentBuildingId, target: floor.id, id: `edge-${parentBuildingId}-${floor.id}` } })
       addChild(parentBuildingId, floor.id)
     })
 
@@ -163,7 +164,7 @@ export function HierarchyGraph({
           hasChildren: true,
         }
       })
-      edges.push({ data: { source: parentId, target: room.id } })
+      edges.push({ data: { source: parentId, target: room.id, id: `edge-${parentId}-${room.id}` } })
       addChild(parentId, room.id)
     })
 
@@ -179,7 +180,7 @@ export function HierarchyGraph({
           hasChildren: true,
         }
       })
-      edges.push({ data: { source: rack.roomId, target: rack.id } })
+      edges.push({ data: { source: rack.roomId, target: rack.id, id: `edge-${rack.roomId}-${rack.id}` } })
       addChild(rack.roomId, rack.id)
     })
 
@@ -198,7 +199,7 @@ export function HierarchyGraph({
           hasChildren: false,
         }
       })
-      edges.push({ data: { source: device.rackId, target: device.id } })
+      edges.push({ data: { source: device.rackId, target: device.id, id: `edge-${device.rackId}-${device.id}` } })
       addChild(device.rackId, device.id)
     })
 
@@ -212,7 +213,7 @@ export function HierarchyGraph({
     return { nodes, edges, childrenMap }
   }, [sceneConfig, siteName])
 
-  // Get all descendants of a node
+  // Get all descendants of a node (stable reference)
   const getDescendants = useCallback((nodeId: string, visited = new Set<string>()): string[] => {
     if (visited.has(nodeId)) return []
     visited.add(nodeId)
@@ -227,22 +228,9 @@ export function HierarchyGraph({
     return descendants
   }, [graphData.childrenMap])
 
-  // Toggle collapse state
-  const toggleCollapse = useCallback((nodeId: string) => {
-    setCollapsedNodes(prev => {
-      const next = new Set(prev)
-      if (next.has(nodeId)) {
-        next.delete(nodeId)
-      } else {
-        next.add(nodeId)
-      }
-      return next
-    })
-  }, [])
-
-  // Initialize Cytoscape
+  // Initialize Cytoscape ONCE
   useEffect(() => {
-    if (!containerRef.current || graphData.nodes.length === 0) return
+    if (!containerRef.current || graphData.nodes.length === 0 || isInitialized) return
 
     const cy = cytoscape({
       container: containerRef.current,
@@ -261,6 +249,8 @@ export function HierarchyGraph({
             'background-color': 'transparent',
             'border-width': 0,
             'text-outline-width': 0,
+            'transition-property': 'background-color, border-width',
+            'transition-duration': '0.2s',
           }
         },
         // Type-specific sizes
@@ -312,17 +302,9 @@ export function HierarchyGraph({
             'height': nodeSizes.device,
           }
         },
-        // Hover effect - add colored circle background
+        // State classes
         {
-          selector: 'node:active, node:grabbed',
-          style: {
-            'background-color': colors.hoverBorder,
-            'background-opacity': 0.3,
-          }
-        },
-        // Selected node
-        {
-          selector: 'node:selected',
+          selector: 'node.selected',
           style: {
             'background-color': colors.selectedBorder,
             'background-opacity': 0.3,
@@ -330,7 +312,6 @@ export function HierarchyGraph({
             'border-color': colors.selectedBorder,
           }
         },
-        // Collapsed node style - add indicator
         {
           selector: 'node.collapsed',
           style: {
@@ -341,14 +322,12 @@ export function HierarchyGraph({
             'background-opacity': 0.15,
           }
         },
-        // Hidden nodes
         {
           selector: 'node.hidden',
           style: {
             'display': 'none',
           }
         },
-        // Hidden edges
         {
           selector: 'edge.hidden',
           style: {
@@ -371,7 +350,8 @@ export function HierarchyGraph({
       ],
       layout: {
         name: 'cose',
-        animate: false,
+        animate: true,
+        animationDuration: 800,
         padding: 80,
         nodeRepulsion: () => 8000,
         idealEdgeLength: () => 80,
@@ -381,35 +361,45 @@ export function HierarchyGraph({
         numIter: 1000,
         coolingFactor: 0.95,
         minTemp: 1.0,
+        randomize: false,
       },
       minZoom: 0.1,
       maxZoom: 4,
     })
 
     cyRef.current = cy
+    setIsInitialized(true)
 
-    // Double-click to toggle collapse
-    cy.on('dbltap', 'node', (evt) => {
-      const node = evt.target
+    // Event handlers - using stable references
+    const handleNodeClick = (evt: cytoscape.EventObject) => {
+      evt.stopPropagation()
+      const node = evt.target as NodeSingular
+      const nodeType = node.data('nodeType')
+      const nodeId = node.id()
+      onNodeSelect?.(nodeId, nodeType)
+    }
+
+    const handleNodeDoubleClick = (evt: cytoscape.EventObject) => {
+      evt.stopPropagation()
+      const node = evt.target as NodeSingular
       const nodeId = node.id()
       const hasChildren = node.data('hasChildren')
       
       if (hasChildren) {
-        toggleCollapse(nodeId)
+        setCollapsedNodes(prev => {
+          const next = new Set(prev)
+          if (next.has(nodeId)) {
+            next.delete(nodeId)
+          } else {
+            next.add(nodeId)
+          }
+          return next
+        })
       }
-    })
+    }
 
-    // Single click to select
-    cy.on('tap', 'node', (evt) => {
-      const node = evt.target
-      const nodeType = node.data('nodeType')
-      const nodeId = node.id()
-      onNodeSelect?.(nodeId, nodeType)
-    })
-
-    // Hover for tooltip
-    cy.on('mouseover', 'node', (evt) => {
-      const node = evt.target
+    const handleNodeMouseOver = (evt: cytoscape.EventObject) => {
+      const node = evt.target as NodeSingular
       const nodeType = node.data('nodeType')
       const label = node.data('fullName') || node.data('label')
       const childCount = node.data('childCount')
@@ -422,176 +412,151 @@ export function HierarchyGraph({
         type: nodeType,
         childCount,
       })
+    }
 
-      // Highlight - add subtle background
-      const typeColor = colors[nodeType as keyof typeof colors] || colors.device
-      node.style({
-        'background-color': typeColor,
-        'background-opacity': 0.25,
-      })
-    })
-
-    cy.on('mouseout', 'node', (evt) => {
-      const node = evt.target
+    const handleNodeMouseOut = () => {
       setTooltip(null)
-      
-      // Reset style unless selected or collapsed
-      if (!node.selected() && !node.hasClass('collapsed')) {
-        node.style({
-          'background-color': 'transparent',
-          'background-opacity': 0,
-        })
-      }
-    })
+    }
 
-    // Fit to view after layout
+    // Attach events
+    cy.on('tap', 'node', handleNodeClick)
+    cy.on('dbltap', 'node', handleNodeDoubleClick)
+    cy.on('mouseover', 'node', handleNodeMouseOver)
+    cy.on('mouseout', 'node', handleNodeMouseOut)
+
+    // Fit view after layout
     cy.one('layoutstop', () => {
       cy.fit(undefined, 80)
     })
 
     return () => {
-      cy.destroy()
+      if (cy && !cy.destroyed()) {
+        cy.destroy()
+      }
+      setIsInitialized(false)
     }
-  }, [graphData, colors, onNodeSelect, toggleCollapse])
+  }, [graphData, colors, onNodeSelect]) // Only depend on stable references
 
-  // Handle collapse/expand visibility
+  // Handle selection changes (separate from initialization)
   useEffect(() => {
     const cy = cyRef.current
-    if (!cy || cy.destroyed()) return
+    if (!cy || cy.destroyed() || !isInitialized) return
 
-    try {
-      // First, show all nodes and edges
-      cy.nodes().removeClass('hidden collapsed')
-      cy.edges().removeClass('hidden')
-
-      // For each collapsed node, hide its descendants
-      collapsedNodes.forEach(collapsedId => {
-        const node = cy.getElementById(collapsedId)
-        if (node.length > 0) {
-          node.addClass('collapsed')
-          
-          // Hide all descendants
-          const descendants = getDescendants(collapsedId)
-          descendants.forEach(descId => {
-            cy.getElementById(descId).addClass('hidden')
-          })
-          
-          // Hide edges to/from hidden nodes
-          cy.edges().forEach(edge => {
-            const sourceHidden = cy.getElementById(edge.data('source')).hasClass('hidden')
-            const targetHidden = cy.getElementById(edge.data('target')).hasClass('hidden')
-            if (sourceHidden || targetHidden) {
-              edge.addClass('hidden')
-            }
-          })
-        }
-      })
-
-      // Re-run layout if there are collapsed nodes
-      if (collapsedNodes.size > 0) {
-        cy.layout({
-          name: 'cose',
-          animate: true,
-          animationDuration: 400,
-          padding: 80,
-          nodeRepulsion: () => 8000,
-          fit: false,
-        }).run()
+    // Remove all selection classes
+    cy.nodes().removeClass('selected')
+    
+    // Add selection to current node
+    if (selectedNodeId) {
+      const selectedNode = cy.getElementById(selectedNodeId)
+      if (selectedNode.length > 0) {
+        selectedNode.addClass('selected')
       }
-    } catch (e) {
-      console.warn('Collapse effect error:', e)
     }
-  }, [collapsedNodes, getDescendants])
+  }, [selectedNodeId, isInitialized])
 
-  // Update selected node styling
+  // Handle collapse/expand (separate from initialization)
   useEffect(() => {
     const cy = cyRef.current
-    if (!cy || cy.destroyed()) return
+    if (!cy || cy.destroyed() || !isInitialized) return
 
-    try {
-      // Clear previous selections visually
-      cy.nodes().forEach((node) => {
-        if (!node.hasClass('collapsed') && node.id() !== selectedNodeId) {
-          node.style({ 
-            'background-color': 'transparent',
-            'background-opacity': 0,
-            'border-width': 0 
-          })
-        }
-      })
+    // Reset all visibility
+    cy.nodes().removeClass('hidden collapsed')
+    cy.edges().removeClass('hidden')
 
-      if (selectedNodeId) {
-        const selectedNode = cy.getElementById(selectedNodeId)
-        if (selectedNode.length > 0) {
-          selectedNode.style({
-            'background-color': colors.selectedBorder,
-            'background-opacity': 0.3,
-            'border-width': 3,
-            'border-color': colors.selectedBorder,
-          })
-        }
+    // Apply collapsed states
+    collapsedNodes.forEach(collapsedId => {
+      const node = cy.getElementById(collapsedId)
+      if (node.length > 0) {
+        node.addClass('collapsed')
+        
+        // Hide all descendants
+        const descendants = getDescendants(collapsedId)
+        descendants.forEach(descId => {
+          cy.getElementById(descId).addClass('hidden')
+        })
+        
+        // Hide edges to/from hidden nodes
+        cy.edges().forEach(edge => {
+          const sourceHidden = cy.getElementById(edge.data('source')).hasClass('hidden')
+          const targetHidden = cy.getElementById(edge.data('target')).hasClass('hidden')
+          if (sourceHidden || targetHidden) {
+            edge.addClass('hidden')
+          }
+        })
       }
-    } catch (e) {
-      console.warn('Selection effect error:', e)
-    }
-  }, [selectedNodeId, colors])
+    })
+  }, [collapsedNodes, getDescendants, isInitialized])
 
-  // Update on theme change
+  // Update theme (separate from initialization)
   useEffect(() => {
     const cy = cyRef.current
-    if (!cy || cy.destroyed()) return
+    if (!cy || cy.destroyed() || !isInitialized) return
 
-    try {
-      if (containerRef.current) {
-        containerRef.current.style.backgroundColor = colors.background
-      }
+    // Update container background
+    if (containerRef.current) {
+      containerRef.current.style.backgroundColor = colors.background
+    }
 
-      // Update edge colors
-      cy.edges().forEach((edge) => {
-        edge.style({
+    // Update edge colors
+    cy.style([
+      {
+        selector: 'edge',
+        style: {
           'line-color': colors.edge,
           'target-arrow-color': colors.edge,
-        })
-      })
-    } catch (e) {
-      console.warn('Theme effect error:', e)
-    }
-  }, [colors])
+        }
+      },
+      {
+        selector: 'node.selected',
+        style: {
+          'background-color': colors.selectedBorder,
+          'border-color': colors.selectedBorder,
+        }
+      },
+      {
+        selector: 'node.collapsed',
+        style: {
+          'border-color': colors.device,
+          'background-color': colors.device,
+        }
+      }
+    ])
+  }, [colors, isInitialized])
 
   // Control handlers
   const handleFitView = useCallback(() => {
     const cy = cyRef.current
-    if (cy && !cy.destroyed()) cy.fit(undefined, 80)
-  }, [])
+    if (cy && !cy.destroyed() && isInitialized) {
+      cy.fit(undefined, 80)
+    }
+  }, [isInitialized])
 
   const handleZoomIn = useCallback(() => {
     const cy = cyRef.current
-    if (!cy || cy.destroyed()) return
+    if (!cy || cy.destroyed() || !isInitialized) return
     cy.zoom(cy.zoom() * 1.3)
-  }, [])
+  }, [isInitialized])
 
   const handleZoomOut = useCallback(() => {
     const cy = cyRef.current
-    if (!cy || cy.destroyed()) return
+    if (!cy || cy.destroyed() || !isInitialized) return
     cy.zoom(cy.zoom() / 1.3)
-  }, [])
+  }, [isInitialized])
 
   const handleRelayout = useCallback(() => {
     const cy = cyRef.current
-    if (!cy || cy.destroyed()) return
-    try {
-      cy.layout({
-        name: 'cose',
-        animate: true,
-        animationDuration: 600,
-        padding: 80,
-        nodeRepulsion: () => 8000,
-        idealEdgeLength: () => 80,
-      }).run()
-    } catch (e) {
-      console.warn('Relayout error:', e)
-    }
-  }, [])
+    if (!cy || cy.destroyed() || !isInitialized) return
+    
+    cy.layout({
+      name: 'cose',
+      animate: true,
+      animationDuration: 600,
+      padding: 80,
+      nodeRepulsion: () => 8000,
+      idealEdgeLength: () => 80,
+      randomize: false,
+    }).run()
+  }, [isInitialized])
 
   const handleExpandAll = useCallback(() => {
     setCollapsedNodes(new Set())

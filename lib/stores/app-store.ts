@@ -102,9 +102,7 @@ export const useAppStore = create<AppState>()(
         selectSite: (site) =>
           set((state) => {
             state.selectedSite = site
-            if (site) {
-              state.currentView = 'twin'
-            }
+            // Don't auto-switch to twin view - let user explicitly navigate
           }),
 
         // Scene Configuration
@@ -120,7 +118,7 @@ export const useAppStore = create<AppState>()(
           }),
 
         // View State
-        currentView: 'twin',
+        currentView: 'map',
         setCurrentView: (view) =>
           set((state) => {
             state.currentView = view

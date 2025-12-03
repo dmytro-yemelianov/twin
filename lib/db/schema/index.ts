@@ -11,6 +11,7 @@ export * from './racks'
 export * from './device-types'
 export * from './devices'
 export * from './equipment-history'
+export * from './anomalies'
 export * from './users'
 
 // Re-export TransformData type for convenience

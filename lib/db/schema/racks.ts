@@ -16,6 +16,10 @@ export const racks = pgTable('racks', {
   currentPowerKw: real('current_power_kw').default(0).notNull(),
   weightKgLimit: real('weight_kg_limit'),
   isAiReady: boolean('is_ai_ready').default(false),
+  rackOrder: integer('rack_order'), // Sequence within room for capacity planning
+  widthMm: integer('width_mm').default(600), // Standard 19" rack width (~482mm actual, 600 with clearance)
+  depthMm: integer('depth_mm').default(1200), // Standard rack depth
+  heightMm: integer('height_mm'), // Calculated from uHeight if not provided
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -30,4 +34,3 @@ export const racksRelations = relations(racks, ({ one, many }) => ({
 
 export type Rack = typeof racks.$inferSelect
 export type NewRack = typeof racks.$inferInsert
-

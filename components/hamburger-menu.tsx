@@ -62,7 +62,7 @@ export function HamburgerMenu({ onNavigate, currentView }: HamburgerMenuProps) {
         <Separator className="my-4" />
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground px-2 mb-2">Appearance</p>
-          <ThemeToggle variant="full" className="w-full" />
+          <ThemeToggle variant="buttons" className="w-full" />
         </div>
       </SheetContent>
     </Sheet>

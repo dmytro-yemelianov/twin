@@ -109,10 +109,22 @@ export const devicesApi = {
   },
 
   // Move device to different rack/position
-  async moveDevice(deviceId: string, targetRackId: string, targetUPosition: number): Promise<ApiResponse<Device>> {
+  async moveDevice(
+    deviceId: string,
+    targetRackId: string,
+    targetUPosition: number,
+    options?: {
+      targetPhase?: 'AS_IS' | 'TO_BE' | 'FUTURE'
+      moveType?: 'MODIFIED' | 'CREATE_PROPOSED'
+      userId?: string
+    }
+  ): Promise<ApiResponse<Device>> {
     return apiClient.post<Device>(`/devices/${deviceId}/move`, {
       targetRackId,
-      targetUPosition
+      targetUPosition,
+      targetPhase: options?.targetPhase || 'TO_BE',
+      moveType: options?.moveType || 'MODIFIED',
+      userId: options?.userId
     })
   },
 
@@ -303,11 +315,11 @@ export const analyticsApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(filters)
     })
-    
+
     if (!response.ok) {
       throw new Error(`Export failed: ${response.statusText}`)
     }
-    
+
     return response.blob()
   }
 }

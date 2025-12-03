@@ -10,11 +10,8 @@ import { Building2, AlertCircle } from "lucide-react"
 import { HamburgerMenu } from "@/components/hamburger-menu"
 import { SitePanel } from "@/components/site-panel"
 import { SitesDatatable } from "@/components/sites-datatable"
-import { HierarchyBrowser } from "@/components/hierarchy-browser"
 import { MapSkeleton, SceneSkeleton } from "@/components/loading-states"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { GitBranch, List } from "lucide-react"
 
 // Lazy load heavy components
 const MapView = dynamic(() => import("@/components/map-view").then(mod => ({ default: mod.MapView })), {
@@ -22,7 +19,7 @@ const MapView = dynamic(() => import("@/components/map-view").then(mod => ({ def
   ssr: false
 })
 
-const TwinViewer = dynamic(() => import("@/components/twin-viewer-optimized").then(mod => ({ default: mod.TwinViewerOptimized })), {
+const TwinViewer = dynamic(() => import("@/components/twin-viewer/twin-viewer").then(mod => ({ default: mod.TwinViewer })), {
   loading: () => <SceneSkeleton />,
   ssr: false
 })
@@ -53,16 +50,13 @@ export default function PageClient() {
   // React Query for data fetching
   const { data: sites = [], isLoading, error } = useSites()
 
-  // Update store when sites are loaded
+  // Update store when sites are loaded (don't auto-select any site)
   useEffect(() => {
     if (sites.length > 0) {
       setSites(sites)
-      if (!selectedSite) {
-        selectSite(sites[0])
-      }
     }
     setIsLoading(isLoading)
-  }, [sites, selectedSite, setSites, selectSite, setIsLoading, isLoading])
+  }, [sites, setSites, setIsLoading, isLoading])
 
   const handleViewTwin = (site: typeof sites[0]) => {
     selectSite(site)
@@ -70,9 +64,9 @@ export default function PageClient() {
     setShowSitesDrawer(false)
   }
 
-  const handleSiteSelect = (site: typeof sites[0]) => {
+  const handleSiteSelect = (site: typeof sites[0] | null) => {
     selectSite(site)
-    setShowDetailsDrawer(true)
+    // Don't show details drawer or switch views - just highlight on map
   }
 
   const handleNavigate = (view: typeof currentView) => {
@@ -116,68 +110,37 @@ export default function PageClient() {
           <div className="flex items-center gap-2 md:gap-3">
             <HamburgerMenu onNavigate={handleNavigate} currentView={currentView} />
 
-            {/* Site Selector Drawer Trigger */}
-            <Sheet open={showSitesDrawer} onOpenChange={setShowSitesDrawer}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                  <Building2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Sites</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-full sm:w-[600px] flex flex-col">
-                <SheetHeader className="shrink-0">
-                  <SheetTitle>Data Center Sites</SheetTitle>
-                  <SheetDescription>Browse and select data center sites by region or hierarchy</SheetDescription>
-                </SheetHeader>
-                <div className="mt-4 flex-1 min-h-0 flex flex-col">
-                  <Tabs defaultValue="hierarchy" className="flex-1 flex flex-col min-h-0">
-                    <TabsList className="grid grid-cols-2 shrink-0">
-                      <TabsTrigger value="hierarchy" className="gap-2">
-                        <GitBranch className="w-4 h-4" />
-                        Hierarchy
-                      </TabsTrigger>
-                      <TabsTrigger value="list" className="gap-2">
-                        <List className="w-4 h-4" />
-                        List
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="hierarchy" className="flex-1 min-h-0 mt-4">
-                      <HierarchyBrowser
-                        sites={sites}
-                        selectedSite={selectedSite}
-                        sceneConfig={null}
-                        onSiteSelect={(site) => {
-                          selectSite(site)
-                        }}
-                        onRackSelect={(rackId) => {
-                          if (selectedSite) {
-                            setCurrentView("twin")
-                            setShowSitesDrawer(false)
-                          }
-                        }}
-                        onDeviceSelect={(deviceId) => {
-                          if (selectedSite) {
-                            setCurrentView("twin")
-                            setShowSitesDrawer(false)
-                          }
-                        }}
-                      />
-                    </TabsContent>
-                    <TabsContent value="list" className="flex-1 min-h-0 mt-4">
-                  <SitesDatatable
-                    sites={sites}
-                    selectedSite={selectedSite}
-                    onSiteSelect={selectSite}
-                    onViewTwin={handleViewTwin}
-                  />
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              </SheetContent>
-            </Sheet>
+            {/* Site Selector Drawer Trigger - only show when not on map view */}
+            {currentView !== "map" && (
+              <Sheet open={showSitesDrawer} onOpenChange={setShowSitesDrawer}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                    <Building2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sites</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-full sm:w-[500px] flex flex-col">
+                  <SheetHeader className="shrink-0">
+                    <SheetTitle>Data Center Sites</SheetTitle>
+                    <SheetDescription>Browse and select data center sites by region</SheetDescription>
+                  </SheetHeader>
+                  <div className="mt-4 flex-1 min-h-0 flex flex-col">
+                    <SitesDatatable
+                      sites={sites}
+                      selectedSite={selectedSite}
+                      onSiteSelect={(site) => {
+                        selectSite(site)
+                        setShowSitesDrawer(false)
+                      }}
+                      onViewTwin={handleViewTwin}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
 
-            {/* Site Details Drawer (only show when site selected) */}
-            {selectedSite && (
+            {/* Site Details Drawer (only show when site selected and not on map view) */}
+            {selectedSite && currentView !== "map" && (
               <Sheet open={showDetailsDrawer} onOpenChange={setShowDetailsDrawer}>
                 <SheetTrigger asChild>
                   <Button
@@ -221,11 +184,21 @@ export default function PageClient() {
         {currentView === "twin" && selectedSite ? (
           <TwinViewer site={selectedSite} sites={sites} onSiteChange={selectSite} />
         ) : currentView === "map" ? (
-          <div className="h-full w-full p-4">
-            <div className="h-full w-full">
-              <MapView 
-                sites={sites} 
-                selectedSite={selectedSite} 
+          <div className="h-full w-full flex">
+            {/* Persistent Sites Panel - Left Side */}
+            <div className="w-80 shrink-0 border-r border-border/50 h-full overflow-hidden flex flex-col bg-card/30">
+              <SitesDatatable
+                sites={sites}
+                selectedSite={selectedSite}
+                onSiteSelect={handleSiteSelect}
+                onViewTwin={handleViewTwin}
+              />
+            </div>
+            {/* Map Area */}
+            <div className="flex-1 h-full p-4">
+              <MapView
+                sites={sites}
+                selectedSite={selectedSite}
                 onSiteSelect={handleSiteSelect}
                 onOpenTwin={handleViewTwin}
               />
@@ -244,7 +217,7 @@ export default function PageClient() {
             <div className="text-center space-y-4">
               <Building2 className="w-16 h-16 mx-auto text-muted-foreground" />
               <p className="text-lg font-medium">Select a site to view the digital twin</p>
-              <Button onClick={() => setShowSitesDrawer(true)}>
+              <Button onClick={() => setCurrentView("map")}>
                 <Building2 className="w-4 h-4 mr-2" />
                 View Sites
               </Button>

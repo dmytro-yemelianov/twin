@@ -5,7 +5,6 @@ const modelCache = new Map<string, THREE.Group>()
 
 export async function loadGLTFModel(uri: string): Promise<THREE.Group> {
   // In production, this would use a proper GLTF loader
-  console.log("[v0] GLTFLoader not available in preview, using fallback for:", uri)
   const fallback = createFallbackGeometry()
   return Promise.resolve(fallback.clone())
 }
@@ -26,26 +25,26 @@ export function applyTransform(object: THREE.Object3D, transform: Transform) {
 }
 
 // Create a text sprite for rack labels
-function createTextSprite(text: string, options: { 
+function createTextSprite(text: string, options: {
   fontSize?: number
-  color?: string 
+  color?: string
   backgroundColor?: string
 } = {}): THREE.Sprite {
   const { fontSize = 48, color = '#ffffff', backgroundColor = 'rgba(0,0,0,0.7)' } = options
-  
+
   // Check if we're in a browser environment
   if (typeof document === 'undefined') {
     // Return an empty sprite for SSR
     return new THREE.Sprite(new THREE.SpriteMaterial())
   }
-  
+
   const canvas = document.createElement('canvas')
   const context = canvas.getContext('2d')!
-  
+
   // Set canvas size
   canvas.width = 256
   canvas.height = 64
-  
+
   // Draw background with rounded corners
   context.fillStyle = backgroundColor
   context.beginPath()
@@ -61,65 +60,65 @@ function createTextSprite(text: string, options: {
   context.quadraticCurveTo(0, 0, radius, 0)
   context.closePath()
   context.fill()
-  
+
   // Draw text
   context.font = `bold ${fontSize}px Arial, sans-serif`
   context.textAlign = 'center'
   context.textBaseline = 'middle'
   context.fillStyle = color
   context.fillText(text, canvas.width / 2, canvas.height / 2)
-  
+
   // Create texture and sprite
   const texture = new THREE.CanvasTexture(canvas)
   texture.needsUpdate = true
-  
-  const spriteMaterial = new THREE.SpriteMaterial({ 
+
+  const spriteMaterial = new THREE.SpriteMaterial({
     map: texture,
     transparent: true,
     depthTest: false,
   })
-  
+
   const sprite = new THREE.Sprite(spriteMaterial)
   sprite.scale.set(1.5, 0.4, 1) // Adjust scale for visibility
-  
+
   return sprite
 }
 
 // Create small U-position label sprite
-function createULabel(uNumber: number, isLightTheme = false): THREE.Sprite {
+function createULabel(uNumber: number, isLightTheme = true): THREE.Sprite {
   if (typeof document === 'undefined') {
     return new THREE.Sprite(new THREE.SpriteMaterial())
   }
-  
+
   const canvas = document.createElement('canvas')
   const context = canvas.getContext('2d')!
-  
+
   canvas.width = 64
   canvas.height = 32
-  
+
   // Transparent background
   context.clearRect(0, 0, canvas.width, canvas.height)
-  
+
   // Draw text
   context.font = 'bold 20px monospace'
   context.textAlign = 'center'
   context.textBaseline = 'middle'
-  context.fillStyle = isLightTheme ? '#666666' : '#888888'
+  context.fillStyle = isLightTheme ? '#666666' : '#cccccc'
   context.fillText(`${uNumber}`, canvas.width / 2, canvas.height / 2)
-  
+
   const texture = new THREE.CanvasTexture(canvas)
   texture.needsUpdate = true
-  
-  const spriteMaterial = new THREE.SpriteMaterial({ 
+
+  const spriteMaterial = new THREE.SpriteMaterial({
     map: texture,
     transparent: true,
     depthTest: false,
   })
-  
+
   const sprite = new THREE.Sprite(spriteMaterial)
   sprite.scale.set(0.2, 0.1, 1)
   sprite.userData.type = 'u-label'
-  
+
   return sprite
 }
 
@@ -128,36 +127,36 @@ function createFrontBackLabel(text: 'FRONT' | 'BACK'): THREE.Sprite {
   if (typeof document === 'undefined') {
     return new THREE.Sprite(new THREE.SpriteMaterial())
   }
-  
+
   const canvas = document.createElement('canvas')
   const context = canvas.getContext('2d')!
-  
+
   canvas.width = 128
   canvas.height = 32
-  
+
   // Transparent background with subtle tint
   context.clearRect(0, 0, canvas.width, canvas.height)
-  
+
   // Draw text
   context.font = 'bold 16px monospace'
   context.textAlign = 'center'
   context.textBaseline = 'middle'
   context.fillStyle = text === 'FRONT' ? '#4ade80' : '#f87171' // Green for front, red for back
   context.fillText(text, canvas.width / 2, canvas.height / 2)
-  
+
   const texture = new THREE.CanvasTexture(canvas)
   texture.needsUpdate = true
-  
-  const spriteMaterial = new THREE.SpriteMaterial({ 
+
+  const spriteMaterial = new THREE.SpriteMaterial({
     map: texture,
     transparent: true,
     depthTest: false,
   })
-  
+
   const sprite = new THREE.Sprite(spriteMaterial)
   sprite.scale.set(0.4, 0.1, 1)
   sprite.userData.type = 'front-back-label'
-  
+
   return sprite
 }
 
@@ -171,9 +170,12 @@ function createRackGeometry(uHeight: number): THREE.Group {
   const postSize = 0.03 // Thickness of frame posts
   const railSize = 0.02 // Thickness of horizontal rails
 
-  // Frame material for posts
+  // Frame material for posts - use theme-aware colors
+  const isCurrentlyDarkTheme = typeof window !== 'undefined' && 
+    document.documentElement.classList.contains('dark')
+    
   const frameMaterial = new THREE.MeshStandardMaterial({
-    color: 0x444444,
+    color: isCurrentlyDarkTheme ? 0x888888 : 0x444444, // Lighter color in dark theme
     metalness: 0.7,
     roughness: 0.3,
   })
@@ -234,11 +236,12 @@ function createRackGeometry(uHeight: number): THREE.Group {
   group.add(topRightRail)
 
   // Add U-position labels on both front and back sides
-  // Show labels at key positions: 1, then every 10U, and the top
+  // Show labels at key positions: 1, then every 5U when zoomed in (not just every 10U)
   const uToMeters = height / uHeight
   const labelPositions: number[] = [1]
-  
-  for (let u = 10; u <= uHeight; u += 10) {
+
+  // Show more frequent labels for better granularity when zoomed in
+  for (let u = 5; u <= uHeight; u += 5) {
     if (!labelPositions.includes(u)) {
       labelPositions.push(u)
     }
@@ -247,9 +250,13 @@ function createRackGeometry(uHeight: number): THREE.Group {
     labelPositions.push(uHeight)
   }
 
+  // Detect theme for label styling
+  const isLightTheme = typeof window === 'undefined' || 
+    !document.documentElement.classList.contains('dark')
+
   // Front labels (left side)
   labelPositions.forEach((uPos) => {
-    const label = createULabel(uPos)
+    const label = createULabel(uPos, isLightTheme)
     const yPosition = (uPos - 0.5) * uToMeters
     label.position.set(-width / 2 - 0.15, yPosition, -depth / 2)
     label.userData.uPosition = uPos
@@ -259,7 +266,7 @@ function createRackGeometry(uHeight: number): THREE.Group {
 
   // Back labels (right side when looking from back)
   labelPositions.forEach((uPos) => {
-    const label = createULabel(uPos)
+    const label = createULabel(uPos, isLightTheme)
     const yPosition = (uPos - 0.5) * uToMeters
     label.position.set(width / 2 + 0.15, yPosition, depth / 2)
     label.userData.uPosition = uPos
@@ -302,12 +309,12 @@ function createRackGeometry(uHeight: number): THREE.Group {
   group.add(backRightStrip)
 
   // Add thin mounting rail indicators on the front posts (visual guide for U positions)
-  const railIndicatorMaterial = new THREE.LineBasicMaterial({ 
+  const railIndicatorMaterial = new THREE.LineBasicMaterial({
     color: 0x555555,
     transparent: true,
-    opacity: 0.5 
+    opacity: 0.5
   })
-  
+
   // Create horizontal lines for every 5U on front face
   for (let u = 0; u <= uHeight; u += 5) {
     const yPosition = u * uToMeters
@@ -320,6 +327,22 @@ function createRackGeometry(uHeight: number): THREE.Group {
     group.add(line)
   }
 
+  // Add edge outline for rack frame for better contrast in dark theme
+  const rackOutlineMaterial = new THREE.LineBasicMaterial({
+    color: isCurrentlyDarkTheme ? 0xbbbbbb : 0x333333,
+    transparent: true,
+    opacity: isCurrentlyDarkTheme ? 0.9 : 0.6,
+    linewidth: 2
+  })
+  
+  // Create edge lines for the main frame structure
+  const frameEdgeGeometry = new THREE.EdgesGeometry(postGeometry)
+  postPositions.forEach((pos) => {
+    const frameEdges = new THREE.LineSegments(frameEdgeGeometry, rackOutlineMaterial)
+    frameEdges.position.set(pos[0], pos[1], pos[2])
+    group.add(frameEdges)
+  })
+
   return group
 }
 
@@ -328,48 +351,52 @@ function createDeviceGeometry(uHeight: number, category: string, mounting?: stri
 
   // Handle vertical mount devices (like 0U PDUs)
   const isVerticalMount = mounting === 'vertical'
-  
+
   // Dimensions differ for vertical mount devices
   const width = isVerticalMount ? 0.06 : 0.5  // Thin strip for vertical PDU
   const depth = isVerticalMount ? 0.08 : 0.9
   const height = isVerticalMount ? 2.0 : (uHeight / 42) * 2.0  // Full rack height for vertical
 
-  // Lighter, more pastel colors for better visibility in both themes
+  // Detect current theme for better color selection
+  const isCurrentDarkTheme = typeof window !== 'undefined' && 
+    document.documentElement.classList.contains('dark')
+
+  // Enhanced colors for better visibility in both themes
   let baseColor = 0x7799cc
   let accentColor = 0x5577aa
 
   switch (category) {
     case "GPU_SERVER":
-      baseColor = 0xffab91 // Light coral/orange for GPU servers
-      accentColor = 0xff8a65
+      baseColor = isCurrentDarkTheme ? 0xffcc9a : 0xffab91 // Brighter coral/orange in dark theme
+      accentColor = isCurrentDarkTheme ? 0xff9a75 : 0xff8a65
       break
     case "SERVER":
-      baseColor = 0x90caf9 // Light blue for standard servers
-      accentColor = 0x64b5f6
+      baseColor = isCurrentDarkTheme ? 0xa5d6ff : 0x90caf9 // Brighter blue in dark theme
+      accentColor = isCurrentDarkTheme ? 0x75c5ff : 0x64b5f6
       break
     case "BLADE":
-      baseColor = 0xce93d8 // Light purple for blade systems
-      accentColor = 0xba68c8
+      baseColor = isCurrentDarkTheme ? 0xdda5e8 : 0xce93d8 // Brighter purple in dark theme
+      accentColor = isCurrentDarkTheme ? 0xcc7ad8 : 0xba68c8
       break
     case "SWITCH":
-      baseColor = 0xa5d6a7 // Light green for network equipment
-      accentColor = 0x81c784
+      baseColor = isCurrentDarkTheme ? 0xb8e6bb : 0xa5d6a7 // Brighter green in dark theme
+      accentColor = isCurrentDarkTheme ? 0x95d695 : 0x81c784
       break
     case "STORAGE":
-      baseColor = 0xffe082 // Light amber for storage
-      accentColor = 0xffd54f
+      baseColor = isCurrentDarkTheme ? 0xffe898 : 0xffe082 // Brighter amber in dark theme
+      accentColor = isCurrentDarkTheme ? 0xffd865 : 0xffd54f
       break
     case "PDU":
-      baseColor = 0xb0bec5 // Light blue-gray for power distribution
-      accentColor = 0x90a4ae
+      baseColor = isCurrentDarkTheme ? 0xc5ced5 : 0xb0bec5 // Brighter blue-gray in dark theme
+      accentColor = isCurrentDarkTheme ? 0xa5b4be : 0x90a4ae
       break
     case "UPS":
-      baseColor = 0xffab91 // Light deep orange for UPS
-      accentColor = 0xff8a65
+      baseColor = isCurrentDarkTheme ? 0xffcc9a : 0xffab91 // Brighter deep orange in dark theme
+      accentColor = isCurrentDarkTheme ? 0xff9a75 : 0xff8a65
       break
     case "NETWORK":
-      baseColor = 0x80deea // Light cyan for patch panels
-      accentColor = 0x4dd0e1
+      baseColor = isCurrentDarkTheme ? 0x95e8f5 : 0x80deea // Brighter cyan in dark theme
+      accentColor = isCurrentDarkTheme ? 0x55d8f0 : 0x4dd0e1
       break
   }
 
@@ -387,11 +414,12 @@ function createDeviceGeometry(uHeight: number, category: string, mounting?: stri
   group.add(chassis)
 
   // Front panel with subtle bezel - FRONT is at negative Z (aligns with rack front)
+  // Use lighter color for better contrast in both themes
   const frontPanelGeometry = new THREE.BoxGeometry(width + 0.02, height, 0.03)
   const frontPanelMaterial = new THREE.MeshStandardMaterial({
-    color: 0x3a3a3a,
-    metalness: 0.7,
-    roughness: 0.3,
+    color: 0x666666, // Lighter gray for better visibility
+    metalness: 0.5,
+    roughness: 0.4,
   })
   const frontPanel = new THREE.Mesh(frontPanelGeometry, frontPanelMaterial)
   frontPanel.position.z = -depth / 2 - 0.015 // Front faces negative Z
@@ -419,12 +447,16 @@ function createDeviceGeometry(uHeight: number, category: string, mounting?: stri
   }
 
   // Add edges for definition - these will be used for highlighting
+  // Use theme-aware edge colors for better contrast
+  const isDeviceDarkTheme = typeof window !== 'undefined' && 
+    document.documentElement.classList.contains('dark')
+    
   const edges = new THREE.EdgesGeometry(geometry)
-  const edgesMaterial = new THREE.LineBasicMaterial({ 
-    color: 0x333333, 
+  const edgesMaterial = new THREE.LineBasicMaterial({
+    color: isDeviceDarkTheme ? 0xaaaaaa : 0x333333, // Lighter edges in dark theme
     linewidth: 1,
     transparent: true,
-    opacity: 0.5
+    opacity: isDeviceDarkTheme ? 0.8 : 0.5 // Higher opacity in dark theme
   })
   edgesMaterial.userData = { isOutline: true, originalColor: 0x333333, originalOpacity: 0.5 }
   const wireframe = new THREE.LineSegments(edges, edgesMaterial)
@@ -588,50 +620,49 @@ function createFloorGrid(
   depth: number
 ): THREE.Group {
   const group = new THREE.Group()
-  
+
   // Grid parameters
   const gridSpacing = 2 // 2 meter grid
   const gridColor = 0x3a5a7a // Subtle blue-gray color
   const gridOpacity = 0.3
-  
+
   // Create grid lines using LineSegments for better performance
   const points: THREE.Vector3[] = []
-  
+
   // Lines parallel to X axis (along depth)
   for (let z = 0; z <= depth; z += gridSpacing) {
     points.push(new THREE.Vector3(0, elevation + 0.02, z))
     points.push(new THREE.Vector3(width, elevation + 0.02, z))
   }
-  
+
   // Lines parallel to Z axis (along width)
   for (let x = 0; x <= width; x += gridSpacing) {
     points.push(new THREE.Vector3(x, elevation + 0.02, 0))
     points.push(new THREE.Vector3(x, elevation + 0.02, depth))
   }
-  
+
   const geometry = new THREE.BufferGeometry().setFromPoints(points)
   const material = new THREE.LineBasicMaterial({
     color: gridColor,
     transparent: true,
     opacity: gridOpacity,
   })
-  
+
   const gridLines = new THREE.LineSegments(geometry, material)
   gridLines.userData = { isFloorGrid: true }
   group.add(gridLines)
-  
+
   // Add floor name label at the corner
   const labelSprite = createTextSprite(floorName, {
     fontSize: 36,
     color: '#4a7a9a',
     backgroundColor: 'rgba(20, 30, 40, 0.7)',
-    padding: 8,
   })
   labelSprite.position.set(2, elevation + 0.5, 2)
   labelSprite.scale.set(2, 1, 1)
   labelSprite.userData = { type: "floor-label", floorName }
   group.add(labelSprite)
-  
+
   return group
 }
 
@@ -736,7 +767,7 @@ export async function buildScene(
     const rackGroup = objects.racks.get(device.rackId)
     if (rackGroup) {
       const rack = rackGroup.userData.data as Rack
-      
+
       if (mounting === 'vertical') {
         // Vertical mount devices go on the side of the rack
         // Position at the left side of the rack, spanning full height
@@ -946,11 +977,6 @@ export function setCameraView(
       position.set(target.x + distance, target.y, target.z)
       camera.up.set(0, 1, 0) // Standard up direction
       break
-    // Legacy support for "side" (maps to right)
-    case "side":
-      position.set(target.x + distance, target.y, target.z)
-      camera.up.set(0, 1, 0)
-      break
     case "isometric": {
       // Isometric: 45° angle from all three axes
       const isoDistance = distance * 0.8
@@ -1062,7 +1088,7 @@ export function create4DConnectionLines(
       const points = curve.getPoints(20)
 
       const geometry = new THREE.BufferGeometry().setFromPoints(points)
-      
+
       // Gradient color based on 4D status
       const lineMaterial = new THREE.LineBasicMaterial({
         color: 0x00ffff,
@@ -1072,7 +1098,7 @@ export function create4DConnectionLines(
       })
 
       const line = new THREE.Line(geometry, lineMaterial)
-      line.userData = { 
+      line.userData = {
         type: "4d-connection",
         logicalEquipmentId: logicalId,
         deviceIds: [deviceIds[i], deviceIds[i + 1]]
@@ -1086,7 +1112,7 @@ export function create4DConnectionLines(
         transparent: true,
         opacity: 0.8,
       })
-      
+
       const startSphere = new THREE.Mesh(sphereGeometry, sphereMaterial)
       startSphere.position.copy(start)
       linesGroup.add(startSphere)
@@ -1115,9 +1141,9 @@ export function highlight4DLines(
 ) {
   linesGroup.traverse((child) => {
     if (child instanceof THREE.Line && child.userData.type === "4d-connection") {
-      const isRelated = logicalEquipmentId && 
+      const isRelated = logicalEquipmentId &&
         child.userData.logicalEquipmentId === logicalEquipmentId
-      
+
       const material = child.material as THREE.LineBasicMaterial
       if (isRelated) {
         material.color.setHex(0xffff00) // Yellow for highlighted
@@ -1150,7 +1176,7 @@ export function getRelatedDeviceIds(
 function createSelectionBox(color: number, padding: number = 0.02): THREE.Group {
   const group = new THREE.Group()
   group.userData.isSelectionBox = true
-  
+
   // Create dashed line material
   const material = new THREE.LineDashedMaterial({
     color: color,
@@ -1160,20 +1186,20 @@ function createSelectionBox(color: number, padding: number = 0.02): THREE.Group 
     transparent: true,
     opacity: 1,
   })
-  
+
   // Create corner markers for a more distinctive look
   const cornerLength = 0.08
   const positions: number[] = []
-  
+
   // We'll set the actual positions when we know the bounding box size
   // For now, create the line segments
   const geometry = new THREE.BufferGeometry()
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  
+
   const lines = new THREE.LineSegments(geometry, material)
   lines.userData.isSelectionLines = true
   group.add(lines)
-  
+
   return group
 }
 
@@ -1183,11 +1209,11 @@ function updateSelectionBoxGeometry(selectionBox: THREE.Group, targetGroup: THRE
   const box = new THREE.Box3().setFromObject(targetGroup)
   const min = box.min
   const max = box.max
-  
+
   // Add padding
   min.x -= padding; min.y -= padding; min.z -= padding
   max.x += padding; max.y += padding; max.z += padding
-  
+
   const corners = [
     [min.x, min.y, min.z], // 0: bottom-left-front
     [max.x, min.y, min.z], // 1: bottom-right-front
@@ -1198,7 +1224,7 @@ function updateSelectionBoxGeometry(selectionBox: THREE.Group, targetGroup: THRE
     [max.x, max.y, max.z], // 6: top-right-back
     [min.x, max.y, max.z], // 7: top-left-back
   ]
-  
+
   // Create line segments for all 12 edges of the box
   const edgeIndices = [
     // Front face
@@ -1208,12 +1234,12 @@ function updateSelectionBoxGeometry(selectionBox: THREE.Group, targetGroup: THRE
     // Connecting edges
     [0, 4], [1, 5], [2, 6], [3, 7],
   ]
-  
+
   const positions: number[] = []
   for (const [a, b] of edgeIndices) {
     positions.push(...corners[a], ...corners[b])
   }
-  
+
   // Find and update the line segments
   selectionBox.traverse((child) => {
     if (child instanceof THREE.LineSegments && child.userData.isSelectionLines) {
@@ -1223,7 +1249,7 @@ function updateSelectionBoxGeometry(selectionBox: THREE.Group, targetGroup: THRE
       child.computeLineDistances() // Required for dashed lines
     }
   })
-  
+
   // Position the selection box at world origin (since positions are in world coords)
   selectionBox.position.set(0, 0, 0)
 }
@@ -1273,7 +1299,7 @@ export function highlightRelatedDevices(
     })
   })
   activeSelectionBoxes.clear()
-  
+
   sceneObjects.devices.forEach((deviceGroup, deviceId) => {
     const isRelated = relatedDeviceIds.includes(deviceId)
     const isSelected = deviceId === selectedDeviceId
@@ -1288,7 +1314,7 @@ export function highlightRelatedDevices(
         mat.opacity = origOpacity
         mat.linewidth = 1
       }
-      
+
       // Reset emissive on mesh
       if (child instanceof THREE.Mesh && child.userData.isMainMesh) {
         const mat = child.material as THREE.MeshStandardMaterial
@@ -1302,7 +1328,7 @@ export function highlightRelatedDevices(
       const color = isSelected ? 0xffdd00 : 0x00ffff // Yellow for selected, cyan for related
       const selectionBox = createSelectionBox(color)
       updateSelectionBoxGeometry(selectionBox, deviceGroup, isSelected ? 0.04 : 0.03)
-      
+
       scene.add(selectionBox)
       activeSelectionBoxes.set(deviceId, selectionBox)
     }
@@ -1321,4 +1347,178 @@ export function updateRackLabelVisibility(sceneObjects: SceneObjects, visible: b
       }
     })
   })
+}
+
+// Distance thresholds for label visibility optimization
+const LABEL_DISTANCE_THRESHOLDS = {
+  HIDE_ALL: 50,           // Hide all labels (including rack labels) beyond this distance
+  SHOW_RACK_ONLY: 25,     // Show only rack name labels between this and HIDE_ALL
+  SHOW_ALL_U_LABELS: 15,  // Show all U-position labels when closer than this (increased)
+  SHOW_GRANULAR_LABELS: 8, // Show 5U increment labels when very close
+}
+
+// Update label visibility based on camera distance (per-rack basis for optimization)
+export function updateLabelsForDistance(
+  sceneObjects: SceneObjects,
+  camera: THREE.Camera,
+  showLabels: boolean
+) {
+  if (!showLabels) {
+    // If labels are globally disabled, hide all
+    sceneObjects.racks.forEach((rackGroup) => {
+      rackGroup.traverse((child) => {
+        if (child instanceof THREE.Sprite) {
+          child.visible = false
+        }
+      })
+    })
+    return
+  }
+
+  const cameraPosition = camera.position
+
+  sceneObjects.racks.forEach((rackGroup) => {
+    // Get the rack's world position
+    const rackWorldPos = new THREE.Vector3()
+    rackGroup.getWorldPosition(rackWorldPos)
+
+    // Calculate distance from camera to rack
+    const distance = cameraPosition.distanceTo(rackWorldPos)
+
+    rackGroup.traverse((child) => {
+      if (child instanceof THREE.Sprite) {
+        const labelType = child.userData.type
+
+        if (distance > LABEL_DISTANCE_THRESHOLDS.HIDE_ALL) {
+          // Far away: hide all labels for performance
+          child.visible = false
+        } else if (distance > LABEL_DISTANCE_THRESHOLDS.SHOW_RACK_ONLY) {
+          // Medium-far distance: show only rack name labels
+          child.visible = labelType === 'rack-label'
+        } else if (distance > LABEL_DISTANCE_THRESHOLDS.SHOW_ALL_U_LABELS) {
+          // Medium distance: show rack label and front/back indicators
+          child.visible = labelType === 'rack-label' || labelType === 'front-back-label'
+        } else if (distance > LABEL_DISTANCE_THRESHOLDS.SHOW_GRANULAR_LABELS) {
+          // Medium-close distance: show rack labels, front/back, and 10U increment labels
+          if (labelType === 'u-label') {
+            const uPosition = child.userData.uPosition
+            // Show labels for 1, 10, 20, 30, 40 and top position
+            child.visible = uPosition === 1 || uPosition % 10 === 0
+          } else {
+            child.visible = labelType === 'rack-label' || labelType === 'front-back-label'
+          }
+        } else {
+          // Close distance: show all labels including 5U increment U-position markers
+          child.visible = true
+        }
+      }
+    })
+  })
+}
+
+// Update theme colors for existing scene objects
+export function updateSceneTheme(sceneObjects: SceneObjects, isDarkTheme: boolean) {
+  // Update rack frame materials
+  sceneObjects.racks.forEach((rackGroup) => {
+    rackGroup.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const material = child.material as THREE.MeshStandardMaterial
+        if (material && material.color) {
+          // Update frame color based on theme
+          if (child.geometry instanceof THREE.BoxGeometry && material.metalness > 0.5) {
+            material.color.setHex(isDarkTheme ? 0x888888 : 0x444444)
+          }
+        }
+      }
+      // Update edge materials
+      if (child instanceof THREE.LineSegments) {
+        const material = child.material as THREE.LineBasicMaterial
+        if (material && material.color) {
+          material.color.setHex(isDarkTheme ? 0xbbbbbb : 0x333333)
+          material.opacity = isDarkTheme ? 0.9 : 0.6
+        }
+      }
+      // Update U-label text colors
+      if (child instanceof THREE.Sprite && child.userData.type === 'u-label') {
+        // Recreate sprite with new theme
+        const uPosition = child.userData.uPosition
+        if (uPosition !== undefined) {
+          const newLabel = createULabel(uPosition, !isDarkTheme)
+          newLabel.position.copy(child.position)
+          newLabel.userData = { ...child.userData }
+          
+          // Replace the old label
+          if (child.parent) {
+            child.parent.add(newLabel)
+            child.parent.remove(child)
+            
+            // Clean up old sprite
+            if (child.material && child.material instanceof THREE.SpriteMaterial) {
+              child.material.map?.dispose()
+              child.material.dispose()
+            }
+          }
+        }
+      }
+    })
+  })
+
+  // Update device materials and edge materials
+  sceneObjects.devices.forEach((deviceGroup) => {
+    deviceGroup.traverse((child) => {
+      // Update front panel color
+      if (child instanceof THREE.Mesh && child.position.z < -0.4) {
+        const material = child.material as THREE.MeshStandardMaterial
+        if (material && material.color && material.color.getHex() < 0x500000) {
+          // This is likely a front panel, update it
+          material.color.setHex(0x666666) // Use the new lighter color
+        }
+      }
+      
+      // Update device edge materials
+      if (child instanceof THREE.LineSegments && child.userData.isOutline) {
+        const material = child.material as THREE.LineBasicMaterial
+        if (material && material.color) {
+          material.color.setHex(isDarkTheme ? 0xaaaaaa : 0x333333)
+          material.opacity = isDarkTheme ? 0.8 : 0.5
+        }
+      }
+    })
+  })
+}
+
+export function disposeObject(object: THREE.Object3D) {
+  object.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      // Dispose geometry
+      child.geometry?.dispose()
+
+      // Dispose materials and their textures
+      if (Array.isArray(child.material)) {
+        child.material.forEach((mat) => {
+          // Dispose textures
+          Object.values(mat).forEach((value: any) => {
+            if (value?.isTexture) {
+              value.dispose()
+            }
+          })
+          mat.dispose()
+        })
+      } else if (child.material) {
+        // Dispose textures
+        Object.values(child.material).forEach((value: any) => {
+          if (value?.isTexture) {
+            value.dispose()
+          }
+        })
+        child.material.dispose()
+      }
+    } else if ((child as any).isLine) {
+      (child as any).geometry?.dispose()
+        ; (child as any).material?.dispose()
+    }
+  })
+
+  // Clear the object from memory
+  object.clear()
 }

@@ -11,6 +11,7 @@ export const sites = pgTable('sites', {
   regionId: uuid('region_id')
     .references(() => regions.id)
     .notNull(),
+  clli: text('clli'), // Common Language Location Identifier (from CSV)
   latitude: real('latitude').notNull(),
   longitude: real('longitude').notNull(),
   rackCount: integer('rack_count').default(0).notNull(),

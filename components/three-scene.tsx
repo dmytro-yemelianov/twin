@@ -25,6 +25,7 @@ import {
   highlightRelatedDevices,
   animateSelectionBoxes,
   updateRackLabelVisibility,
+  updateLabelsForDistance,
 } from "@/lib/three/scene-builder"
 import { status4DColors } from "@/lib/types"
 
@@ -209,6 +210,7 @@ export function ThreeScene({
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [offScreenIndicators, setOffScreenIndicators] = useState<OffScreenIndicator[]>([])
   const hoveredObjectRef = useRef<THREE.Object3D | null>(null)
+  const showLabelsRef = useRef(showLabels)
 
   // Initialize Three.js scene
   useEffect(() => {
@@ -491,6 +493,9 @@ export function ThreeScene({
     // Animation loop
     let animationId: number
     const clock = new THREE.Clock()
+    let lastLabelUpdate = 0
+    const labelUpdateInterval = 100 // Update label visibility every 100ms
+    
     const animate = () => {
       animationId = requestAnimationFrame(animate)
       const delta = clock.getDelta()
@@ -514,6 +519,12 @@ export function ThreeScene({
         if (newIndicators !== null) {
           setOffScreenIndicators(newIndicators)
         }
+      }
+      
+      // Update distance-based label visibility (throttled for performance)
+      if (now - lastLabelUpdate > labelUpdateInterval && sceneObjectsRef.current) {
+        lastLabelUpdate = now
+        updateLabelsForDistance(sceneObjectsRef.current, camera, showLabelsRef.current)
       }
       
       renderer.render(scene, camera)
@@ -991,10 +1002,12 @@ export function ThreeScene({
     }
   }, [resolvedTheme])
 
-  // Update label visibility
+  // Update label visibility ref and trigger immediate update
   useEffect(() => {
-    if (!sceneObjectsRef.current) return
-    updateRackLabelVisibility(sceneObjectsRef.current, showLabels)
+    showLabelsRef.current = showLabels
+    if (!sceneObjectsRef.current || !cameraRef.current) return
+    // Trigger immediate distance-based update when showLabels changes
+    updateLabelsForDistance(sceneObjectsRef.current, cameraRef.current, showLabels)
   }, [showLabels])
 
   return (
